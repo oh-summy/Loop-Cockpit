@@ -1,0 +1,23 @@
+{
+  "name": "loop-cockpit-pty-spike",
+  "version": "0.0.1",
+  "private": true,
+  "description": "PTY spike for Loop Cockpit — verify node-pty can spawn Claude Code CLI",
+  "type": "module",
+  "scripts": {
+    "demo": "tsx pty-demo.ts",
+    "demo-auto": "tsx auto-respond.ts",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
