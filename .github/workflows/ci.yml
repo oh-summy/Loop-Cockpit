@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 仅在已经有 package.json 时，才安装 pnpm + Node 缓存
+      # Iteration 1 阶段仓库只有文档，没有任何 Node 依赖，跳过即可
+      - name: Detect Node project
+        id: detect
+        run: |
+          if [ -f package.json ]; then
+            echo "has_pkg=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pkg=false" >> "$GITHUB_OUTPUT"
+            echo "No package.json yet (Iteration 1 docs-only phase). Skipping all node steps."
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.detect.outputs.has_pkg == 'true'
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.has_pkg == 'true'
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        if: steps.detect.outputs.has_pkg == 'true'
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            pnpm install
+          fi
+      - name: Lint
+        if: steps.detect.outputs.has_pkg == 'true'
+        run: |
+          if grep -q '"lint"' package.json; then
+            pnpm lint
+          else
+            echo "No lint script yet. Skipping."
+          fi
+
+      - name: Test
+        if: steps.detect.outputs.has_pkg == 'true'
+        run: |
+          if grep -q '"test"' package.json; then
+            pnpm test
+          else
+            echo "No test script yet. Skipping."
+          fi
+
+  docs-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required docs exist
+        run: |
+          for f in README.md AGENTS.md CLAUDE.md LICENSE \
+                   docs/product/whitepaper.md \
+                   docs/product/prd.md \
+                   docs/product/non-goals.md \
+                   docs/product/glossary.md \
+                   docs/product/roadmap.md; do
+            if [ ! -f "$f" ]; then
+              echo "Missing required doc: $f"
+              exit 1
+            fi
+          done
+          echo "All required docs present."
