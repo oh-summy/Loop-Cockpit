@@ -1,0 +1,42 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Build
+dist/
+build/
+.vitepress/cache/
+.vitepress/dist/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Loop Cockpit runtime（一旦产品跑起来，这些目录是用户数据）
+.loop-cockpit/
+~/.loop-cockpit/
+
+# Spike experimental output（spike 自己的临时输出别 commit）
+spike/**/tmp/
+spike/**/.local/
+
+# Coverage / test artifacts
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
