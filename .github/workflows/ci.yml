@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            pnpm install --frozen-lockfile
+          else
+            echo "No pnpm-lock.yaml yet. Skipping install (Iteration 1 docs-only phase)."
+          fi
+      - name: Lint
+        run: |
+          if [ -f package.json ] && grep -q '"lint"' package.json; then
+            pnpm lint
+          else
+            echo "No lint script yet. Skipping."
+          fi
+      - name: Test
+        run: |
+          if [ -f package.json ] && grep -q '"test"' package.json; then
+            pnpm test
+          else
+            echo "No test script yet. Skipping."
+          fi
+
+  docs-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify required docs exist
+        run: |
+          for f in README.md AGENTS.md CLAUDE.md LICENSE \
+                   docs/product/whitepaper.md \
+                   docs/product/prd.md \
+                   docs/product/non-goals.md \
+                   docs/product/glossary.md \
+                   docs/product/roadmap.md; do
+            if [ ! -f "$f" ]; then
+              echo "Missing required doc: $f"
+              exit 1
+            fi
+          done
+          echo "All required docs present."
