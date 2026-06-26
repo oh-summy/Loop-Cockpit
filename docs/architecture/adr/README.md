@@ -31,10 +31,10 @@
 
 ## ADR 索引
 
-| # | 标题 | 状态 | 日期 |
-|---|---|---|---|
-| 0001 | 技术栈选型 | Proposed | 2026-06-24 |
-| 0002 | 使用 node-pty | Proposed | 2026-06-24 |
-| 0003 | SQLite + Drizzle | Proposed | 2026-06-24 |
-| 0004 | Worktree 隔离 | 计划 Iter 3 | - |
-| 0005 | Trigger 事件总线 | 计划 Iter 4 | - |
+| # | 标题 | 状态 | 日期 | 文件 |
+|---|---|---|---|---|
+| 0001 | 技术栈选型 | Proposed（草稿） | 2026-06-26 | [0001-tech-stack.md](./0001-tech-stack.md) |
+| 0002 | 使用 node-pty | 待 spike 结论 | - | （等 `spike/pty/` 跑通） |
+| 0003 | SQLite + Drizzle | Proposed（草稿） | 2026-06-26 | [0003-sqlite-drizzle.md](./0003-sqlite-drizzle.md) |
+| 0004 | Worktree 隔离 | 计划 Iter 3 | - | - |
+| 0005 | Trigger 事件总线 | 计划 Iter 4 | - | - |
