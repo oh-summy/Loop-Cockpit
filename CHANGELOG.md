@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **开发辅助**：从 [obra/superpowers](https://github.com/obra/superpowers) @ `896224c4` 引入工程方法论 skill 包
+  - 用户级（不入仓库，仅 `~/.claude/skills/`）：brainstorming / writing-plans / executing-plans / test-driven-development / systematic-debugging / verification-before-completion / using-git-worktrees / requesting-code-review / receiving-code-review / finishing-a-development-branch / writing-skills / using-superpowers — 共 12 个
+  - 项目级（入仓库 `.claude/skills/`）：subagent-driven-development、dispatching-parallel-agents — 作为 Loop Cockpit 产品形态（Loop 内多 step + 两阶段 review、多 Loop 并行派发）的活体参考样本，附 `_why-in-project.md` 写明边界与不修改原则
+  - 决策与试用计划：`notes/2026-06-26-superpowers-bootstrap.md`
 - 项目立项与基础文档骨架
 - 中英双语 README
 - AGENTS.md（开发期 AI 协作规则总章）+ CLAUDE.md（跳板）
