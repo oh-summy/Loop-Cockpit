@@ -9,8 +9,11 @@
 
 ### Loop
 **目标驱动的自治闭环**:在沙箱中,Agent 反复执行→验收→修正,直到达成 Goal 或撞预算上限。
-- vs Cron Job:Cron 跑命令;Loop 跑直到验收通过
+- vs Cron Job:Cron 跑命令,失败即失败;Loop 跑**直到验收通过**(单次 Run 内 retry)
 - vs Workflow:Workflow 是 DAG;Loop 是带反馈的环
+
+> **关于 Manual 触发**:Manual 触发的也是 Loop——**循环发生在单次 Run 内部的 retry**(`maxRetries > 0` 时,Agent 失败会被 retryPolicy 反复唤起,直到 Done Criteria 通过或撞预算)。
+> 若用户写 `maxRetries=0` + 简单 doneCriteria,行为上退化成定时任务——这是**用户主动选择不利用 Loop 能力**,不是产品边界问题。Loop Cockpit 不限制使用姿势,但它的核心价值在 retry 闭环。
 
 ### Blueprint
 **Loop 的定义/模板**,静态配置——含 Goal、Done Criteria、Agent、Trigger、Skill、MCP 等。

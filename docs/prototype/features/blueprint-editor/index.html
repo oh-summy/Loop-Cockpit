@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Blueprint 编辑器 · 原型 v2 · Loop Cockpit</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // 启动时尽早应用主题(避免闪屏)
+  (function() {
+    const saved = localStorage.getItem('lc-theme') || 'dark';
+    if (saved === 'dark') document.documentElement.classList.add('dark');
+  })();
+  tailwind.config = {
+    darkMode: 'class',
+    theme: { extend: {
+      colors: {
+        accent: '#7c5cff', accent2: '#10b981', danger: '#ef4444'
+      },
+      fontFamily: { mono: ['ui-monospace', 'SF Mono', 'Menlo', 'monospace'] }
+    }}
+  }
+</script>
+<style>
+  :root {
+    --bg: #ffffff; --surface: #f9fafb; --border: #e5e7eb;
+    --fg: #111827; --fg-muted: #6b7280; --input-bg: #ffffff;
+  }
+  .dark {
+    --bg: #0a0a0a; --surface: #1a1a1a; --border: #2a2a2a;
+    --fg: #e5e7eb; --fg-muted: #9ca3af; --input-bg: #1a1a1a;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; transition: background 0.2s, color 0.2s; }
+  input, textarea, select { background: var(--input-bg); color: var(--fg); border-color: var(--border); }
+  textarea, input[type=text], select { font-family: ui-monospace, 'SF Mono', monospace; }
+  .surface { background: var(--surface); }
+  .border-default { border-color: var(--border); }
+  .text-muted { color: var(--fg-muted); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+  .day-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--input-bg); color: var(--fg); cursor: pointer; font-size: 13px; transition: all 0.15s; }
+  .day-btn:hover { border-color: #7c5cff; }
+  .day-btn.active { background: #7c5cff; color: white; border-color: #7c5cff; }
+  .day-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+  .time-chip { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--input-bg); color: var(--fg); cursor: pointer; font-size: 12px; font-family: ui-monospace, monospace; }
+  .time-chip:hover { border-color: #7c5cff; }
+  .time-chip.active { background: rgba(124, 92, 255, 0.15); color: #7c5cff; border-color: #7c5cff; }
+  .week-btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--input-bg); color: var(--fg); cursor: pointer; font-size: 13px; }
+  .week-btn.active { background: #7c5cff; color: white; border-color: #7c5cff; }
+  details > summary { list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<header class="border-b border-default surface">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-4">
+    <span class="text-accent font-bold text-lg">🚀 Loop Cockpit</span>
+    <nav class="flex gap-4 text-sm text-muted">
+      <a class="hover:opacity-80" href="#">Dashboard</a>
+      <a style="color: var(--fg)" href="#">Blueprints</a>
+      <a class="hover:opacity-80" href="#">Runs</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-3 text-xs text-muted">
+      <button id="theme-toggle" class="px-3 py-1.5 rounded border border-default hover:border-accent flex items-center gap-2 text-sm">
+        <span id="theme-icon">🌙</span><span id="theme-label">暗色</span>
+      </button>
+      <span>@oh-summy</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-6 py-8">
+
+  <div class="flex items-baseline gap-3 mb-2">
+    <h1 class="text-2xl font-bold">创建 Blueprint</h1>
+    <span class="badge surface text-muted border border-default">B 双列分组 · v2</span>
+  </div>
+  <p class="text-muted text-sm mb-8">左 = 核心定义(目标 + 完成判定),右 = 执行配置(Agent + 启动方式 + 重试)。</p>
+
+  <div class="grid grid-cols-2 gap-6">
+    <!-- 左:核心定义 -->
+    <div class="space-y-5">
+      <div class="text-xs uppercase tracking-wider text-accent">核心定义</div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">Name <span class="text-danger">*</span></label>
+        <input type="text" value="daily-lint" class="w-full px-3 py-2 rounded border border-default"/>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">Goal <span class="text-danger">*</span><span class="text-muted text-xs ml-2">自然语言</span></label>
+        <textarea rows="4" class="w-full px-3 py-2 rounded border border-default">让 main 分支保持 lint + test + build 全绿。失败时自动 retry 3 次。</textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2 flex items-center justify-between">
+          <span>Done Criteria <span class="text-danger">*</span></span>
+          <button class="text-xs px-2 py-0.5 rounded" style="background: rgba(16,185,129,0.15); color: #10b981;">🧪 试跑</button>
+        </label>
+        <textarea rows="3" class="w-full px-3 py-2 rounded border border-default font-mono text-sm">pnpm lint &amp;&amp; pnpm test &amp;&amp; pnpm build</textarea>
+        <p class="text-muted text-xs mt-1">D1.3 · 不启 Agent,只验证命令</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">Project path</label>
+        <input type="text" value="/Users/rocky/project/Loop-Cockpit" class="w-full px-3 py-2 rounded border border-default font-mono text-sm"/>
+      </div>
+    </div>
+
+    <!-- 右:执行配置 -->
+    <div class="space-y-5">
+      <div class="text-xs uppercase tracking-wider" style="color: #10b981">执行配置</div>
+
+      <div>
+        <label class="block text-sm font-medium mb-2">Agent + Model</label>
+        <div class="grid grid-cols-2 gap-2">
+          <select class="px-3 py-2 rounded border border-default">
+            <option>claude-code</option>
+          </select>
+          <select class="px-3 py-2 rounded border border-default">
+            <option>claude-sonnet-4-6</option>
+            <option>claude-opus-4-8</option>
+            <option>claude-haiku-4-5</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ========== 启动方式(原 Trigger) ========== -->
+      <div>
+        <label class="block text-sm font-medium mb-3">启动方式</label>
+        <div class="surface border border-default rounded-lg p-1 flex gap-1 text-sm">
+          <button class="mode-tab flex-1 px-3 py-2 rounded transition" data-mode="manual">手动</button>
+          <button class="mode-tab flex-1 px-3 py-2 rounded transition active" data-mode="schedule">定时</button>
+          <button class="mode-tab flex-1 px-3 py-2 rounded transition" data-mode="webhook" disabled>Webhook <span class="text-xs opacity-60">(Iter 4)</span></button>
+        </div>
+
+        <!-- Mode: Manual -->
+        <div id="mode-manual" class="mode-panel mt-3 surface rounded-lg p-4 border border-default hidden">
+          <p class="text-sm text-muted">仅在 UI 点击 <span style="color: var(--fg); font-weight: 500;">"Run now"</span> 时触发。</p>
+          <p class="text-xs text-muted mt-2">💡 配合 <code class="surface px-1 rounded">maxRetries > 0</code> 时仍是 Loop:Agent 失败 → 自动 retry → 直到 Done Criteria 通过。</p>
+        </div>
+
+        <!-- Mode: Schedule -->
+        <div id="mode-schedule" class="mode-panel mt-3 surface rounded-lg p-4 border border-default">
+          <!-- 子模式:每天/每周/每月/自定义 -->
+          <div class="flex gap-2 mb-4 text-xs">
+            <button class="sched-tab px-3 py-1.5 rounded border border-default active" data-sched="daily">每天</button>
+            <button class="sched-tab px-3 py-1.5 rounded border border-default" data-sched="weekly">每周</button>
+            <button class="sched-tab px-3 py-1.5 rounded border border-default" data-sched="monthly">每月</button>
+            <button class="sched-tab px-3 py-1.5 rounded border border-default" data-sched="advanced">自定义</button>
+          </div>
+
+          <!-- 每天 -->
+          <div id="sched-daily" class="sched-panel">
+            <div class="text-xs text-muted mb-2">几点触发(可多选)</div>
+            <div id="daily-times" class="flex flex-wrap gap-2 mb-3"></div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="daily-custom-time" placeholder="HH:MM" class="px-2 py-1 rounded border border-default text-sm w-20 font-mono"/>
+              <button id="daily-add-time" class="text-xs px-2 py-1 rounded border border-default hover:border-accent">+ 添加</button>
+            </div>
+          </div>
+
+          <!-- 每周 -->
+          <div id="sched-weekly" class="sched-panel hidden">
+            <div class="text-xs text-muted mb-2">星期几(可多选)</div>
+            <div id="week-days" class="flex flex-wrap gap-2 mb-4"></div>
+            <div class="text-xs text-muted mb-2">几点触发(可多选)</div>
+            <div id="weekly-times" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <!-- 每月 -->
+          <div id="sched-monthly" class="sched-panel hidden">
+            <div class="text-xs text-muted mb-2">日期(可多选,1-31;不存在的日期跳过)</div>
+            <div id="month-days" class="grid grid-cols-10 gap-1.5 mb-4"></div>
+            <div class="text-xs text-muted mb-2">几点触发(可多选)</div>
+            <div id="monthly-times" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <!-- 自定义 cron 表达式 -->
+          <div id="sched-advanced" class="sched-panel hidden">
+            <div class="text-xs text-muted mb-2">Cron 表达式(5 字段:分 时 日 月 星期)</div>
+            <input type="text" value="0 9 * * 1-5" class="w-full px-3 py-2 rounded border border-default font-mono text-sm mb-2"/>
+            <div class="text-xs flex items-center gap-2">
+              <span class="text-muted">解析:</span>
+              <span style="color: #10b981">✅ 工作日 09:00</span>
+              <span class="text-muted ml-2">参考:<a href="https://crontab.guru" class="text-accent hover:underline">crontab.guru</a></span>
+            </div>
+          </div>
+
+          <!-- 触发预览 -->
+          <div class="mt-4 pt-4 border-t border-default">
+            <div class="text-xs text-muted mb-2">下次触发预览</div>
+            <div id="next-fires" class="space-y-1 text-xs font-mono"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Retry policy -->
+      <div class="surface border border-default rounded-lg p-4">
+        <div class="text-sm font-medium mb-3">Retry policy</div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <div class="text-muted text-xs mb-1">Max retries</div>
+            <input type="number" value="1" class="w-full px-2 py-1 rounded border border-default"/>
+          </div>
+          <div>
+            <div class="text-muted text-xs mb-1">Timeout</div>
+            <input type="text" value="10 min" class="w-full px-2 py-1 rounded border border-default"/>
+          </div>
+          <div>
+            <div class="text-muted text-xs mb-1">Budget</div>
+            <input type="text" value="$1" class="w-full px-2 py-1 rounded border border-default"/>
+          </div>
+          <div>
+            <div class="text-muted text-xs mb-1">On fail</div>
+            <select class="w-full px-2 py-1 rounded border border-default">
+              <option>Notify</option>
+              <option>Stop</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <details class="border border-default rounded">
+        <summary class="px-3 py-2 cursor-pointer text-sm text-muted hover:opacity-80">高级:System prompt template ▼</summary>
+        <textarea rows="4" class="w-full px-3 py-2 border-t border-default font-mono text-xs" placeholder="留空使用默认模板">{{goal}} 在 {{projectPath}} 工作。所有改动须通过 {{doneCriteria}}。</textarea>
+      </details>
+    </div>
+  </div>
+
+  <div class="flex gap-3 pt-8 mt-8 border-t border-default">
+    <button class="px-6 py-2 rounded border border-default">取消</button>
+    <button class="ml-auto px-6 py-2 rounded border border-default">保存</button>
+    <button class="px-6 py-2 rounded text-white" style="background: #7c5cff">保存并立即运行</button>
+  </div>
+</main>
+
+<!-- ===================== Scripts ===================== -->
+<script>
+// ============ 主题切换(localStorage 持久化) ============
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-icon');
+const themeLabel = document.getElementById('theme-label');
+
+function applyTheme(theme) {
+  if (theme === 'dark') {
+    document.documentElement.classList.add('dark');
+    themeIcon.textContent = '🌙';
+    themeLabel.textContent = '暗色';
+  } else {
+    document.documentElement.classList.remove('dark');
+    themeIcon.textContent = '☀️';
+    themeLabel.textContent = '亮色';
+  }
+  localStorage.setItem('lc-theme', theme);
+}
+
+themeToggle.onclick = () => {
+  const cur = localStorage.getItem('lc-theme') || 'dark';
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+};
+
+// 初始化(已在 <head> 提前应用过 class,这里同步 label)
+applyTheme(localStorage.getItem('lc-theme') || 'dark');
+
+// ============ 启动方式切换 ============
+document.querySelectorAll('.mode-tab').forEach(btn => {
+  btn.onclick = () => {
+    if (btn.disabled) return;
+    document.querySelectorAll('.mode-tab').forEach(b => {
+      b.classList.remove('active');
+      b.style.background = '';
+      b.style.color = '';
+    });
+    btn.classList.add('active');
+    btn.style.background = '#7c5cff';
+    btn.style.color = 'white';
+    const mode = btn.dataset.mode;
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('mode-' + mode).classList.remove('hidden');
+    updateNextFires();
+  };
+});
+// 初始化高亮
+document.querySelector('.mode-tab.active').click();
+
+// ============ Schedule 子模式切换 ============
+document.querySelectorAll('.sched-tab').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.sched-tab').forEach(b => {
+      b.classList.remove('active');
+      b.style.background = '';
+      b.style.color = '';
+    });
+    btn.classList.add('active');
+    btn.style.background = '#7c5cff';
+    btn.style.color = 'white';
+    const s = btn.dataset.sched;
+    document.querySelectorAll('.sched-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('sched-' + s).classList.remove('hidden');
+    updateNextFires();
+  };
+});
+document.querySelector('.sched-tab.active').click();
+
+// ============ 时间多选 chips ============
+function renderTimeChips(containerId, preset, defaultSelected) {
+  const c = document.getElementById(containerId);
+  preset.forEach(t => {
+    const chip = document.createElement('button');
+    chip.className = 'time-chip' + (defaultSelected.includes(t) ? ' active' : '');
+    chip.textContent = t;
+    chip.onclick = () => { chip.classList.toggle('active'); updateNextFires(); };
+    c.appendChild(chip);
+  });
+}
+const presetTimes = ['00:00','06:00','09:00','12:00','15:00','18:00','21:00','23:30'];
+renderTimeChips('daily-times', presetTimes, ['09:00']);
+renderTimeChips('weekly-times', presetTimes, ['09:00']);
+renderTimeChips('monthly-times', presetTimes, ['09:00']);
+
+// 每天 自定义时间
+document.getElementById('daily-add-time').onclick = () => {
+  const v = document.getElementById('daily-custom-time').value.trim();
+  if (!/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) { alert('格式 HH:MM'); return; }
+  const c = document.getElementById('daily-times');
+  const chip = document.createElement('button');
+  chip.className = 'time-chip active';
+  chip.textContent = v;
+  chip.onclick = () => { chip.classList.toggle('active'); updateNextFires(); };
+  c.appendChild(chip);
+  document.getElementById('daily-custom-time').value = '';
+  updateNextFires();
+};
+
+// ============ 周几多选 ============
+const weeks = [['一', 1], ['二', 2], ['三', 3], ['四', 4], ['五', 5], ['六', 6], ['日', 0]];
+const weekContainer = document.getElementById('week-days');
+weeks.forEach(([label, n]) => {
+  const b = document.createElement('button');
+  b.className = 'week-btn' + ([1,2,3,4,5].includes(n) ? ' active' : '');
+  b.textContent = '周' + label;
+  b.dataset.day = n;
+  b.onclick = () => { b.classList.toggle('active'); updateNextFires(); };
+  weekContainer.appendChild(b);
+});
+
+// ============ 每月日期多选(1-31) ============
+const monthContainer = document.getElementById('month-days');
+for (let d = 1; d <= 31; d++) {
+  const b = document.createElement('button');
+  b.className = 'day-btn' + (d === 1 ? ' active' : '');
+  b.textContent = d;
+  b.dataset.day = d;
+  b.onclick = () => { b.classList.toggle('active'); updateNextFires(); };
+  if (d > 28) b.title = (d === 31 ? '不是所有月份都有 31 号,会跳过' : '2 月无此日,会跳过');
+  monthContainer.appendChild(b);
+}
+
+// ============ 触发预览(近 3 次) ============
+function updateNextFires() {
+  const c = document.getElementById('next-fires');
+  if (!c) return;
+  c.innerHTML = '';
+  const mode = document.querySelector('.mode-tab.active')?.dataset.mode;
+  if (mode === 'manual') {
+    c.innerHTML = '<div class="text-muted">手动模式无定时触发</div>';
+    return;
+  }
+  // 简单模拟近 3 次(真实实现走后端 cron parser)
+  const fake = [
+    '2026-06-29 (明) 09:00',
+    '2026-06-30 (后) 09:00',
+    '2026-07-01 (周三) 09:00'
+  ];
+  fake.forEach(t => {
+    const div = document.createElement('div');
+    div.style.color = 'var(--fg)';
+    div.textContent = '· ' + t;
+    c.appendChild(div);
+  });
+}
+updateNextFires();
+</script>
+</body>
+</html>
