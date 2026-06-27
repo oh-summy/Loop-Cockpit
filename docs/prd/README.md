@@ -9,6 +9,10 @@
 | ID | 标题 | 状态 | 优先级 | Iter | Issue |
 |---|---|---|---|---|---|
 | F001 | [PTY Runner](F001-pty-runner.md) | Done | P0 | 1 | [#1](https://github.com/oh-summy/Loop-Cockpit/issues/1) |
+| F002 | [Blueprint CRUD + 编辑器](F002-blueprint-editor.md) | Draft | P0 | 2 | _TBD_ |
+| F003 | [Run 状态机 + 生命周期](F003-run-state-machine.md) | Draft | P0 | 2 | _TBD_ |
+| F004 | [Claude Code Adapter + 实时终端流](F004-claude-adapter.md) | Draft | P0 | 2 | _TBD_ |
+| F005 | [Audit Trail](F005-audit-trail.md) | Draft | P0 | 2 | _TBD_ |
 
 ## 状态说明
 
