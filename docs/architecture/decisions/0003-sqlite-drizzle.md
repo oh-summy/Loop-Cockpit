@@ -1,8 +1,9 @@
 ---
 id: 0003
 title: SQLite + Drizzle (而非 PostgreSQL / Prisma)
-status: Proposed
+status: Accepted
 date: 2026-06-26
+accepted: 2026-06-28
 deciders: "@oh-summy"
 ---
 
@@ -28,6 +29,17 @@ Loop Cockpit 需持久化 `blueprints / runs / logs / triggers / memories / arti
 **显式不在本 ADR 锁的事**:
 - 是否将来切 PostgreSQL — non-goals §6 已锁"SQLite 必须永远是默认",**允许**未来开 ADR-XXXX 加可选 Postgres driver
 - 是否支持 libsql/Turso — 等有跨机器同步诉求再说(与 non-goals §1 冲突,暂不考虑)
+
+### 已拍板的 4 个工程细节(2026-06-28)
+
+| Q | 决策 | 落地 |
+|---|---|---|
+| **Q6** PTY stdout 落 DB? | **不全落**,双轨存储 | DB(`runs` 表)存元数据+关键报错片段+文件指针;原始 buffer → `~/.loop-cockpit/runs/<runId>/raw.log` |
+| **Q7** drizzle-kit migration 时机 | **Iter 2 day 1** | 第一个 schema commit 就用 `drizzle-kit generate`,不用 `db.exec(initSchema)` |
+| **Q8** WAL mode | **默认启用** | Host 启动时 `PRAGMA journal_mode=WAL`,所有 connection 共享 |
+| **Q9** schema 命名 | **DB snake_case / TS camelCase** | Drizzle schema 用列名映射(`sqliteTable("blueprints", { id: integer("id"), createdAt: integer("created_at"), ... })`) |
+
+详细背景见 [notes/2026-06-27-pending-decisions.md](../../../notes/2026-06-27-pending-decisions.md)。
 
 ## 替代方案 (Alternatives)
 
@@ -102,3 +114,4 @@ Loop Cockpit 需持久化 `blueprints / runs / logs / triggers / memories / arti
 |---|---|---|
 | 2026-06-26 | v0.1 | 首版草稿 |
 | 2026-06-27 | v0.2 | 砍开放问题段(转 [notes/2026-06-27-pending-decisions.md](../../../notes/2026-06-27-pending-decisions.md));重组按新 ADR 模板 |
+| 2026-06-28 | v1.0 | **Accepted**:全部 4 个工程细节(Q6-Q9)按 AI 建议拍板 |

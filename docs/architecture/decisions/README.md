@@ -11,9 +11,9 @@
 
 | # | 标题 | 状态 | 日期 |
 |---|---|---|---|
-| [0001](./0001-tech-stack.md) | 技术栈选型 | Proposed | 2026-06-26 |
-| [0002](./0002-node-pty.md) | node-pty(PTY 选型 + 三坑对策) | _待写,Iter 1 PTY spike 通过后落_ | - |
-| [0003](./0003-sqlite-drizzle.md) | SQLite + Drizzle | Proposed | 2026-06-26 |
+| [0001](./0001-tech-stack.md) | 技术栈选型 | ✅ Accepted | 2026-06-28 |
+| [0002](./0002-node-pty.md) | node-pty(PTY 选型 + 三坑对策) | Proposed | 2026-06-27 |
+| [0003](./0003-sqlite-drizzle.md) | SQLite + Drizzle | ✅ Accepted | 2026-06-28 |
 | 0004 | Worktree 隔离 | _计划 Iter 3_ | - |
 | 0005 | Trigger 事件总线 | _计划 Iter 4_ | - |
 | 0006 | _保留:Agenda 降级时使用_ | - | - |

@@ -109,9 +109,27 @@ apps/web/src/   ← Vite + React, Iter 2 起
 |---|---|---|
 | node-pty 在 macOS x86_64 拉起 claude + 收发 prompt | ✅ Iter 1 验证 | [F001 PRD](../prd/F001-pty-runner.md) / spike/pty/ |
 | pnpm 11 build script 放行机制 | ✅ 已解 | `pnpm-workspace.yaml` `allowBuilds` |
-| node-pty spawn-helper 权限问题 | ⚠️ 已知坑 + 对策 | ADR-0002(待写) |
+| node-pty spawn-helper 权限问题 | ✅ 已解(对策已记录) | [ADR-0002](./decisions/0002-node-pty.md) |
+| 技术栈选型(TS / Node 20 / pnpm / Fastify / Drizzle / Vite + React) | ✅ Accepted | [ADR-0001](./decisions/0001-tech-stack.md) |
+| 数据层(SQLite + Drizzle + WAL + drizzle-kit migration) | ✅ Accepted | [ADR-0003](./decisions/0003-sqlite-drizzle.md) |
+| **数据双轨**:DB 存元数据,raw stdout → `~/.loop-cockpit/runs/<runId>/raw.log` | ✅ Accepted | ADR-0003 Q6 |
 
-## 5. 待验证项(随 Iter 推进)
+## 5. 数据持久化双轨策略(Iter 2 起)
+
+PTY raw stdout 量级大(单 Run 可达上百 MB),全落 SQLite 会让 DB 膨胀且查询慢。决策:
+
+```
+                     ┌─── 元数据 + 关键报错片段 + 文件指针 ───→ SQLite (data.db, WAL)
+PTY raw buffer ─────┤                                          ↑ 索引 / 查询 / Memory FTS5
+                     └─── 完整原始 ANSI 流 ──────────────────→ ~/.loop-cockpit/runs/<runId>/raw.log
+                                                                ↑ Run 详情页回放 / 跨 Run 复用
+```
+
+- DB 始终是**唯一可查询的真相**(`runs.id` / `runs.status` / `runs.error_snippet`)
+- 文件系统是**重放载体**(Xterm 回放从 file 拉,不查 DB)
+- Worktree 路径:`~/.loop-cockpit/workspaces/<runId>/` 与 raw.log 同侧
+
+## 6. 待验证项(随 Iter 推进)
 
 - node-pty 在 Linux / Windows 的稳定性(Iter 2)
 - ANSI 流转发到 Xterm 是否需 buffer 中转层(Iter 2)
@@ -135,3 +153,4 @@ apps/web/src/   ← Vite + React, Iter 2 起
 |---|---|---|
 | 2026-06-24 | v0.0 | 占位 |
 | 2026-06-27 | v0.1 | 写实:分层图、核心抽象、模块边界、已验证/待验证项 |
+| 2026-06-28 | v0.2 | 加入数据双轨策略(ADR-0003 Q6 落地);ADR-0001/0003 Accepted 状态同步 |

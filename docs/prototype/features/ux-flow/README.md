@@ -2,9 +2,9 @@
 id: P000
 name: ux-flow
 level: feature
-status: Exploring
+status: Decided
 related-prd: 多个(F002 Blueprint Editor / F003 Run Detail 待建)
-updated: 2026-06-27
+updated: 2026-06-28
 ---
 
 # Prototype · UX Flow (5 个核心用户流程)
@@ -27,9 +27,9 @@ updated: 2026-06-27
 5. 成功 = 绿 banner + token/cost;失败 = 红 banner + "重试 / 进 worktree / 查推理链"
 
 **关键决策点**:
-- **D1.1** · 首次启动要不要"Claude Code 路径"向导? → AI 倾向有(允许 skip,用 `which claude` 探测) · _待你定_
-- **D1.2** · 手动运行要不要弹"危险操作确认"? → AI 倾向不弹(信任用户配的 Done Criteria) · _待你定_
-- **D1.3** · Done Criteria 编辑器要"试跑"按钮(不启 Agent,只跑 Criteria)? → **AI 强烈建议有**,onboarding 体验关键 · _待你定_
+- **D1.1** · 首次启动要不要"Claude Code 路径"向导? → AI 倾向有(允许 skip,用 `which claude` 探测) · ✅ 已定 (2026-06-28)
+- **D1.2** · 手动运行要不要弹"危险操作确认"? → AI 倾向不弹(信任用户配的 Done Criteria) · ✅ 已定 (2026-06-28)
+- **D1.3** · Done Criteria 编辑器要"试跑"按钮(不启 Agent,只跑 Criteria)? → **AI 强烈建议有**,onboarding 体验关键 · ✅ 已定 (2026-06-28)
 
 **对应模块**:Blueprint CRUD (A) / Run 状态机 (B) / Adapter (C) / PTY (D)
 
@@ -46,10 +46,10 @@ updated: 2026-06-27
 4. 用户在 worktree 改 Skill / prompt → 回 UI "Re-run with current changes"
 
 **关键决策点**:
-- **D2.1** · Worktree 失败保留多久?满盘怎办? → AI 倾向永久保留 + "Clear successful worktrees" 按钮;Iter 5+ 再做容量告警 · _待你定_
-- **D2.2** · 失败 Run 自动 retry 还是人工? → AI 倾向按 retryPolicy 自动重试 N 次,UI 标"已自动重试 N 次" · _待你定_
-- **D2.3** · worktree 默认 `~/.loop-cockpit/workspaces/<runId>/` 还是允许用户自配? → AI 倾向前者 + settings 可覆盖 · _待你定_
-- **D2.4** · "Re-run with current changes" 是 amend 还是开新 Run? → **AI 强建议开新 Run**(审计性优先),UI 标"延续自 #N" · _待你定_
+- **D2.1** · Worktree 失败保留多久?满盘怎办? → AI 倾向永久保留 + "Clear successful worktrees" 按钮;Iter 5+ 再做容量告警 · ✅ 已定 (2026-06-28)
+- **D2.2** · 失败 Run 自动 retry 还是人工? → AI 倾向按 retryPolicy 自动重试 N 次,UI 标"已自动重试 N 次" · ✅ 已定 (2026-06-28)
+- **D2.3** · worktree 默认 `~/.loop-cockpit/workspaces/<runId>/` 还是允许用户自配? → AI 倾向前者 + settings 可覆盖 · ✅ 已定 (2026-06-28)
+- **D2.4** · "Re-run with current changes" 是 amend 还是开新 Run? → **AI 强建议开新 Run**(审计性优先),UI 标"延续自 #N" · ✅ 已定 (2026-06-28)
 
 **对应模块**:Run 状态机 (B) / Worktree (E) / Trigger Cron (G)
 
@@ -65,8 +65,8 @@ updated: 2026-06-27
 3. 用户点链接 → Run 详情 → 推理链 / token 流水 / worktree diff
 
 **关键决策点**:
-- **D3.1** · 通知卡片含哪些字段? → AI 倾向 Loop 名 + 时长 + 迭代次数 + token + 状态 + URL · _待你定_
-- **D3.2** · 成功通知发不发?(失败必发) → AI 倾向 Blueprint 配置(default off) · _待你定_
+- **D3.1** · 通知卡片含哪些字段? → AI 倾向 Loop 名 + 时长 + 迭代次数 + token + 状态 + URL · ✅ 已定 (2026-06-28)
+- **D3.2** · 成功通知发不发?(失败必发) → AI 倾向 Blueprint 配置(default off) · ✅ 已定 (2026-06-28)
 
 **对应模块**:Channel Hub (I) / Audit (K)
 
@@ -82,8 +82,8 @@ updated: 2026-06-27
 3. 点任一 → 进 Run 详情
 
 **关键决策点**:
-- **D4.1** · 默认并发上限多少? → AI 倾向 2(macOS 单机够用,可在 settings 调) · _待你定_
-- **D4.2** · 并发触达上限,新 Run 怎办? → AI 倾向 queue + UI 标 "queued, 1 ahead" · _待你定_
+- **D4.1** · 默认并发上限多少? → AI 倾向 2(macOS 单机够用,可在 settings 调) · ✅ 已定 (2026-06-28)
+- **D4.2** · 并发触达上限,新 Run 怎办? → AI 倾向 queue + UI 标 "queued, 1 ahead" · ✅ 已定 (2026-06-28)
 
 **对应模块**:Run 状态机 (B) / Dispatcher (G3)
 
@@ -100,8 +100,8 @@ updated: 2026-06-27
 4. 新 Run 用新版本
 
 **关键决策点**:
-- **D5.1** · Blueprint 改保存 = 自动版本化? → **AI 强建议是**(审计性),Iter 5 起做;Iter 2-4 直接覆盖,UI 警告"将影响后续所有 Run" · _待你定_
-- **D5.2** · 历史 Run 保存"当时 Blueprint 快照"还是只存 BlueprintId? → AI 倾向快照(audit-trail.json 里),牺牲存储换可审计 · _待你定_
+- **D5.1** · Blueprint 改保存 = 自动版本化? → **AI 强建议是**(审计性),Iter 5 起做;Iter 2-4 直接覆盖,UI 警告"将影响后续所有 Run" · ✅ 已定 (2026-06-28)
+- **D5.2** · 历史 Run 保存"当时 Blueprint 快照"还是只存 BlueprintId? → AI 倾向快照(audit-trail.json 里),牺牲存储换可审计 · ✅ 已定 (2026-06-28)
 
 **对应模块**:Blueprint (A) / Audit (K)
 
@@ -111,11 +111,11 @@ updated: 2026-06-27
 
 | ID | 决策 | AI 建议 | 你的决定 |
 |---|---|---|---|
-| **H1** | 暗色/亮色默认? | 暗色(独立开发者偏好,Xterm 暗色更协调) | _未答_ |
-| **H2** | 中文 / 英文默认 UI? | 中文(主要用户群)+ 英文切换 | _未答_ |
-| **H3** | Onboarding 是否强制走完? | 否,所有提示可 skip | _未答_ |
-| **H4** | Empty state 引导卡片样式 | 大插画 + 1 个主 CTA + 1 个次 CTA | _未答_ |
-| **H5** | 上 Tailwind 还是手写 CSS? | **Tailwind**(本地工具不需要主题切换 / 多端,Tailwind 开发速度优先) | _未答_ |
+| **H1** | 暗色/亮色默认? | 暗色(独立开发者偏好,Xterm 暗色更协调) | ✅ 接受 AI 建议 |
+| **H2** | 中文 / 英文默认 UI? | 中文(主要用户群)+ 英文切换 | ✅ 接受 AI 建议 |
+| **H3** | Onboarding 是否强制走完? | 否,所有提示可 skip | ✅ 接受 AI 建议 |
+| **H4** | Empty state 引导卡片样式 | 大插画 + 1 个主 CTA + 1 个次 CTA | ✅ 接受 AI 建议 |
+| **H5** | 上 Tailwind 还是手写 CSS? | **Tailwind**(本地工具不需要主题切换 / 多端,Tailwind 开发速度优先) | ✅ 接受 AI 建议 |
 
 ---
 
@@ -133,3 +133,4 @@ updated: 2026-06-27
 |---|---|---|
 | 2026-06-26 | v0.1 | 首版,5 流程 + 17 决策点 |
 | 2026-06-27 | v0.2 | 砍冗余啰嗦段,聚焦决策点;迁到 prototype/features/ux-flow/ |
+| 2026-06-28 | v1.0 | **Decided**:全部 13 个 D 决策点 + 5 个 H 横向决策按 AI 建议一次性拍板 |

@@ -1,8 +1,9 @@
 ---
 id: 0001
 title: 技术栈选型
-status: Proposed
+status: Accepted
 date: 2026-06-26
+accepted: 2026-06-28
 deciders: "@oh-summy"
 ---
 
@@ -88,9 +89,21 @@ PTY/ORM 细节展开见 [ADR-0002](./0002-node-pty.md) / [ADR-0003](./0003-sqlit
 - React 在轻量本地工具场景偏重,但替换成本随时间增加
 
 **中性 / 待观察**
-- Vitest vs Jest:Vitest 更现代,部分老库 mock 行为不一致时再切
+- Vitest vs Jest:**已选 Vitest**(Q3,2026-06-28)。如遇老库 mock 行为不一致再评估
 - Fastify v5 LTS 周期是否覆盖到 1.0 发布
-- Tailwind CSS 是否引入:等 ux-flow / ui-spec 写实后单独决定
+- Tailwind CSS:**横向决策 H5 已选 Tailwind**,但本 ADR 暂不锁定,等 Iter 2 apps/web 建立时单独开 ADR(Q1,2026-06-28)
+
+## 已拍板的 5 个开放问题(2026-06-28)
+
+| Q | 决策 |
+|---|---|
+| Q1 Tailwind 锁定时机 | 本 ADR 不锁,留待 apps/web 单独 ADR(H5 已选 Tailwind) |
+| Q2 Husky 时机 | Iter 2 上(配合 apps/host 建立) |
+| Q3 测试框架 | Vitest |
+| Q4 monorepo? | 先单包 apps/host;apps/web Iter 2 后期或 3 拆出 |
+| Q5 Node 版本 | 20 LTS(`engines.node >= 20`) |
+
+详细背景见 [notes/2026-06-27-pending-decisions.md](../../../notes/2026-06-27-pending-decisions.md)。
 
 ## 关联 ADR
 
@@ -113,3 +126,4 @@ PTY/ORM 细节展开见 [ADR-0002](./0002-node-pty.md) / [ADR-0003](./0003-sqlit
 |---|---|---|
 | 2026-06-26 | v0.1 | 首版草稿 |
 | 2026-06-27 | v0.2 | 砍开放问题段(转 [notes/2026-06-27-pending-decisions.md](../../../notes/2026-06-27-pending-decisions.md));重组按新 ADR 模板 |
+| 2026-06-28 | v1.0 | **Accepted**:全部 5 个开放问题(Q1-Q5)按 AI 建议拍板 |
