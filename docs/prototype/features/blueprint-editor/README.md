@@ -81,3 +81,16 @@ open docs/prototype/features/blueprint-editor/index.html
 |---|---|---|
 | 2026-06-28 | v1 | 3 变体 A/B/C |
 | 2026-06-28 | v2 | 基于 B + 维护者反馈:主题切换 + 结构化 Cron 配置器 + Manual 语义说明 |
+| 2026-06-28 | v3 | v2 + 7 项细化反馈:小时分钟滚轮选择器、周末/工作日快捷、每月 1-31 多选 + 月初/月中/月末快捷、**新增"每 N 天/周"模式 + 起始时间**、Retry Policy 中文化 + ⓘ 悬浮解释、Footer(GitHub + Power by)、Agent 显示名空格(Claude Code) + 模型本地读取提示、**类型字段(6 类多选:Bug 修复/重构/测试/文档/定期检查/其他)** |
+
+## v2 → v3 变化要点
+
+| 项 | v2 | v3 |
+|---|---|---|
+| 时间选择 | 8 个固定预设 chips | 滚轮 + ± 按钮 + 手动输入 + 6 快捷预设(0/4/8/12/16/20点)+ 已选时间 chip 显示 |
+| 周/月快捷 | 无 | 周:工作日/周末/全选/清空;月:月初/月中/月末/清空 |
+| 周期模式 | 无 | **新增 每 N 天/周 + 起始时间("从下一个匹配时间开始" 或 datetime-local)** |
+| Retry Policy | 英文 jargon | 全中文 + 4 个 ⓘ 悬浮解释 |
+| Footer | 无 | GitHub / Issues / 中英 link / Power by @oh-summy |
+| Agent 显示 | claude-code(hyphen) | Claude Code(空格);说明本地配置读取 |
+| 类型字段 | 无 | 6 类 chip 多选,默认选"定期检查" |
