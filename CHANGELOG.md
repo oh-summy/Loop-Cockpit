@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **文档结构重构 v1.0**（2026-06-27）：docs/ 改为 `architecture/` + `prd/` + `prototype/` 三层结构,带模板与索引
+  - 删 7 个占位 README + 占位文件(原 docs/ 18 文件 2054 行 → 16 文件 ~1500 行)
+  - 合并 whitepaper(214 行) → 进 `architecture/product-overview.md`
+  - 新增 `docs/README.md` 文档地图 + 生命周期流程
+  - 新增 `prd/_template.md`(单功能 PRD 模板) + `prd/F001-pty-runner.md`(本周完成的 PTY 功能)
+  - 新增 `architecture/decisions/0002-node-pty.md`(PTY 选型 + 三坑对策)
+  - ADR-0001 / 0003 砍掉"开放问题"段(违反 ADR 不可变原则) → 转存 [`notes/2026-06-27-pending-decisions.md`](notes/2026-06-27-pending-decisions.md)
+  - 同步更新 AGENTS.md §4 / CONTRIBUTING.md / README.md / .github/ISSUE_TEMPLATE/feature.md 中所有 docs 路径引用
+- **PTY 尖刀跑通**（2026-06-26）：spike/pty 00/01/02 全绿,验证 node-pty + claude 在 macOS x86_64 可行(拉起/捕获/收发 prompt/exit code),三个工程坑已记录(pnpm `allowBuilds` / spawn-helper 权限 / timer)
 - **开发辅助**：从 [obra/superpowers](https://github.com/obra/superpowers) @ `896224c4` 引入工程方法论 skill 包
   - 用户级（不入仓库，仅 `~/.claude/skills/`）：brainstorming / writing-plans / executing-plans / test-driven-development / systematic-debugging / verification-before-completion / using-git-worktrees / requesting-code-review / receiving-code-review / finishing-a-development-branch / writing-skills / using-superpowers — 共 12 个
   - 项目级（入仓库 `.claude/skills/`）：subagent-driven-development、dispatching-parallel-agents — 作为 Loop Cockpit 产品形态（Loop 内多 step + 两阶段 review、多 Loop 并行派发）的活体参考样本，附 `_why-in-project.md` 写明边界与不修改原则
@@ -15,11 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 项目立项与基础文档骨架
 - 中英双语 README
 - AGENTS.md（开发期 AI 协作规则总章）+ CLAUDE.md（跳板）
-- docs/ 全部正式文档骨架：
-  - product/{whitepaper, prd, non-goals, glossary, roadmap}.md（v0.1 草案）
-  - design/{ux-flow, ui-spec, assets}.md（占位）
-  - architecture/{overview, data-model, modules/, adr/}.md（占位 + 索引）
-  - runtime/agent-contract.md（运行时契约草案）
 - spike/ 与 notes/ 目录骨架
 - .github/ Issue / PR / CI 模板
 - .gitignore + .editorconfig
@@ -28,4 +32,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Iteration 1（Foundation）启动
 - License: MIT
-- 关键技术验证（PTY 尖刀）尚未开始
+- 关键技术验证（PTY 尖刀）已完成,详见 [`docs/prd/F001-pty-runner.md`](docs/prd/F001-pty-runner.md)

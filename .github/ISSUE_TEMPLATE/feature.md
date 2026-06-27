@@ -16,8 +16,8 @@ assignees: ''
 
 ## 我是否查过
 
-- [ ] 已读 [`docs/product/non-goals.md`](../../docs/product/non-goals.md)，**不冲突**
-- [ ] 已读 [`docs/product/roadmap.md`](../../docs/product/roadmap.md)，**未在路线上**
+- [ ] 已读 [`docs/architecture/non-goals.md`](../../docs/architecture/non-goals.md)，**不冲突**
+- [ ] 已读 [`docs/roadmap.md`](../../docs/roadmap.md)，**未在路线上**
 - [ ] 已搜过 Issue，**没有重复**
 
 ## 建议方案（可选）

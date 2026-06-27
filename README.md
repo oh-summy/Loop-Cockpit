@@ -6,11 +6,11 @@
 
 Loop Engineering 的本地可视化控制驾驶舱 · Local visual control cockpit for Loop Engineering
 
-[简体中文](#-简体中文) · [English](#-english) · [产品白皮书](./docs/product/whitepaper.md) · [路线图](./docs/product/roadmap.md)
+[简体中文](#-简体中文) · [English](#-english) · [产品总览](./docs/architecture/product-overview.md) · [路线图](./docs/roadmap.md)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/Status-Planning-orange.svg)](#当前状态)
-[![Stage](https://img.shields.io/badge/Stage-Iteration%201-blue.svg)](./docs/product/roadmap.md)
+[![Stage](https://img.shields.io/badge/Stage-Iteration%201-blue.svg)](./docs/roadmap.md)
 
 </div>
 
@@ -46,7 +46,7 @@ Loop Engineering 的本地可视化控制驾驶舱 · Local visual control cockp
 ### 当前状态
 
 🚧 **Planning · Iteration 1 (Foundation)** —— 正在做产品定义、原型、技术尖刀验证。
-代码还没开始写，欢迎围观 [路线图](./docs/product/roadmap.md) 与 [PRD](./docs/product/prd.md)。
+代码还没开始写，欢迎围观 [路线图](./docs/roadmap.md) 与 [产品总览](./docs/architecture/product-overview.md)。
 
 ### 快速开始（占位）
 
@@ -59,10 +59,11 @@ npx loop-cockpit start   # 计划中
 
 | 类目 | 文档 |
 |---|---|
-| 产品 | [白皮书](./docs/product/whitepaper.md) · [PRD](./docs/product/prd.md) · [非目标](./docs/product/non-goals.md) · [术语](./docs/product/glossary.md) · [路线图](./docs/product/roadmap.md) |
-| 设计 | [交互流程](./docs/design/ux-flow.md) · [UI 规格](./docs/design/ui-spec.md) |
-| 架构 | [总览](./docs/architecture/overview.md) · [数据模型](./docs/architecture/data-model.md) · [模块](./docs/architecture/modules/) · [ADR](./docs/architecture/adr/) |
-| 运行时 | [Agent 契约](./docs/runtime/agent-contract.md) |
+| 入口 | [docs/README.md](./docs/README.md) |
+| 架构 | [产品总览](./docs/architecture/product-overview.md) · [系统总览](./docs/architecture/overview.md) · [非目标](./docs/architecture/non-goals.md) · [术语](./docs/architecture/glossary.md) · [ADR](./docs/architecture/decisions/) |
+| 功能 PRD | [PRD 索引](./docs/prd/) · [F001 PTY Runner](./docs/prd/F001-pty-runner.md) |
+| 原型 | [Prototype 库](./docs/prototype/) |
+| 路线图 | [roadmap.md](./docs/roadmap.md) |
 | AI 协作 | [AGENTS.md](./AGENTS.md) |
 
 ### 参与
@@ -109,7 +110,7 @@ Existing tools are either cloud SaaS, command-line agents, or enterprise ops pla
 ### Status
 
 🚧 **Planning · Iteration 1 (Foundation)** — product definition, prototype, and technical spike in progress.
-No runnable code yet. Track progress via the [Roadmap](./docs/product/roadmap.md).
+No runnable code yet. Track progress via the [Roadmap](./docs/roadmap.md).
 
 ### Quick start (placeholder)
 
@@ -122,10 +123,11 @@ npx loop-cockpit start   # planned
 
 | Category | Docs |
 |---|---|
-| Product | [Whitepaper](./docs/product/whitepaper.md) · [PRD](./docs/product/prd.md) · [Non-goals](./docs/product/non-goals.md) · [Glossary](./docs/product/glossary.md) · [Roadmap](./docs/product/roadmap.md) |
-| Design | [UX flow](./docs/design/ux-flow.md) · [UI spec](./docs/design/ui-spec.md) |
-| Architecture | [Overview](./docs/architecture/overview.md) · [Data model](./docs/architecture/data-model.md) · [Modules](./docs/architecture/modules/) · [ADR](./docs/architecture/adr/) |
-| Runtime | [Agent contract](./docs/runtime/agent-contract.md) |
+| Entry | [docs/README.md](./docs/README.md) |
+| Architecture | [Product overview](./docs/architecture/product-overview.md) · [System overview](./docs/architecture/overview.md) · [Non-goals](./docs/architecture/non-goals.md) · [Glossary](./docs/architecture/glossary.md) · [ADR](./docs/architecture/decisions/) |
+| Feature PRDs | [PRD index](./docs/prd/) · [F001 PTY Runner](./docs/prd/F001-pty-runner.md) |
+| Prototype | [Prototype library](./docs/prototype/) |
+| Roadmap | [roadmap.md](./docs/roadmap.md) |
 | AI collab | [AGENTS.md](./AGENTS.md) |
 
 ### Contributing

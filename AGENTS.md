@@ -4,8 +4,7 @@
 > 任何 AI 在本仓库工作前，**必须先读这一份**；其它入口文件（如 `CLAUDE.md`）都只是跳板。
 >
 > ⚠️ 本文件描述的是「**开发 Loop Cockpit 本身**」的规则。
-> 当 Loop Cockpit 作为产品**运行起来**、去管理别人的项目时，运行时的契约在
-> [`docs/runtime/agent-contract.md`](./docs/runtime/agent-contract.md)，不要混淆。
+> 当 Loop Cockpit 作为产品**运行起来**、去管理别人的项目时,运行时的契约**待 Iter 6+ 建立**(本 Iter 已删除占位文件)。
 
 ---
 
@@ -17,7 +16,7 @@
 - **当前阶段**：Iteration 1 — Foundation。**还没有产品代码**，正在做文档/原型/技术尖刀。
 - **维护者**：[@oh-summy](https://github.com/oh-summy)（一个人 + AI 协作开发）
 
-更多上下文 → [`README.md`](./README.md) · [`docs/product/prd.md`](./docs/product/prd.md) · [`docs/product/roadmap.md`](./docs/product/roadmap.md)
+更多上下文 → [`README.md`](./README.md) · [`docs/architecture/product-overview.md`](./docs/architecture/product-overview.md) · [`docs/roadmap.md`](./docs/roadmap.md)
 
 ---
 
@@ -27,7 +26,7 @@
 
 **你的工作主线**：
 
-1. 当前 Iteration 的目标在 [`docs/product/roadmap.md`](./docs/product/roadmap.md)
+1. 当前 Iteration 的目标在 [`docs/roadmap.md`](./docs/roadmap.md)
 2. 当前 Iteration 的 Issue 在 [GitHub Project #3](https://github.com/users/oh-summy/projects/3/views/1)
 3. 任何代码/文档的改动必须能映射到一个 Issue（哪怕事后补也行）
 
@@ -35,7 +34,7 @@
 
 - ❌ 不要自作主张引入新依赖、新技术栈、新架构
 - ❌ 不要写 Issue 范围之外的代码（discovery 性质的探索除外，且必须放在 `spike/`）
-- ❌ 不要修改 [`docs/product/non-goals.md`](./docs/product/non-goals.md) 中已明确"不做"的事
+- ❌ 不要修改 [`docs/architecture/non-goals.md`](./docs/architecture/non-goals.md) 中已明确"不做"的事
 - ✅ 有疑问、有不确定，**先问，再写**
 
 ---
@@ -44,12 +43,14 @@
 
 | 优先级 | 文档 | 你必须知道什么 |
 |---|---|---|
-| 🔴 | [`docs/product/non-goals.md`](./docs/product/non-goals.md) | **绝对不做的事**——任何冲突这里的方案都要被拒绝 |
-| 🔴 | [`docs/product/glossary.md`](./docs/product/glossary.md) | Loop / Blueprint / Run / Task / Trigger 的精确定义 |
-| 🔴 | [`docs/product/prd.md`](./docs/product/prd.md) | 当前 PRD（功能边界） |
-| 🟡 | [`docs/product/roadmap.md`](./docs/product/roadmap.md) | 现在在哪个 Iteration |
-| 🟡 | [`docs/architecture/overview.md`](./docs/architecture/overview.md) | 系统分层（PTY 尖刀通过后才完善） |
-| 🟡 | [`docs/architecture/adr/`](./docs/architecture/adr/) | 历史技术决策——**改动前先看有没有相关 ADR** |
+| 🔴 | [`docs/architecture/non-goals.md`](./docs/architecture/non-goals.md) | **绝对不做的事**——任何冲突这里的方案都要被拒绝 |
+| 🔴 | [`docs/architecture/glossary.md`](./docs/architecture/glossary.md) | Loop / Blueprint / Run / Task / Trigger 的精确定义 |
+| 🔴 | [`docs/architecture/product-overview.md`](./docs/architecture/product-overview.md) | 产品定义 + 全功能总览(原 PRD) |
+| 🔴 | [`docs/README.md`](./docs/README.md) | 文档地图 + 60 秒入口 + 生命周期 |
+| 🟡 | [`docs/roadmap.md`](./docs/roadmap.md) | 现在在哪个 Iteration |
+| 🟡 | [`docs/architecture/overview.md`](./docs/architecture/overview.md) | 系统分层 + 模块边界 |
+| 🟡 | [`docs/architecture/decisions/`](./docs/architecture/decisions/) | 历史技术决策——**改动前先看有没有相关 ADR** |
+| 🟡 | [`docs/prd/`](./docs/prd/) | 各功能 PRD,按 F<NNN> 编号 |
 
 ---
 
@@ -64,11 +65,24 @@ Loop-Cockpit/
 ├── CHANGELOG.md           # 每个 PR 必须更新
 ├── CONTRIBUTING.md
 │
-├── docs/                  # 所有正式文档（VitePress 源）
-│   ├── product/           # 白皮书 / PRD / 非目标 / 术语 / 路线图
-│   ├── design/            # 原型 / UX 流 / UI 规格
-│   ├── architecture/      # 总览 / 数据模型 / 模块 / ADR
-│   └── runtime/           # 运行时契约（产品对外的）
+├── docs/                  # 所有正式文档（VitePress 源,Iter 7+ 才公开发布）
+│   ├── README.md            # 文档入口 + 60 秒地图
+│   ├── roadmap.md           # Iter 时间线 + 优先级
+│   ├── architecture/        # 架构 + 总 PRD + 决策(稳定层)
+│   │   ├── overview.md         # 系统分层 + 模块边界
+│   │   ├── product-overview.md # 产品定义 + 全功能总览
+│   │   ├── non-goals.md        # 绝不做的事
+│   │   ├── glossary.md         # 术语
+│   │   └── decisions/          # ADR 决策日志(不可变)
+│   ├── prd/                 # 单功能 PRD(滚动追加,F<NNN>)
+│   │   ├── README.md
+│   │   ├── _template.md
+│   │   └── F<NNN>-<slug>.md
+│   └── prototype/           # 原型库(features/components/product 三层)
+│       ├── README.md
+│       ├── features/
+│       ├── components/
+│       └── product/
 │
 ├── .github/
 │   ├── ISSUE_TEMPLATE/    # atomic-task / bug / spike
@@ -76,15 +90,28 @@ Loop-Cockpit/
 │
 ├── spike/                 # 技术尖刀验证（非产品代码）
 ├── notes/                 # 开发日志（进仓库公开）
-└── apps/                  # 产品代码（暂未建）
+└── apps/                  # 产品代码（Iter 2 起建）
 ```
 
 **严格约定**：
 
 - **技术探索代码** → `spike/`，永远不进 `apps/`
-- **个人开发日志** → `notes/`，VitePress **不**渲染
-- **正式文档** → `docs/`，VitePress 渲染到 GitHub Pages
+- **个人开发日志 / 过程档案** → `notes/`，VitePress **不**渲染
+- **正式文档** → `docs/`，VitePress 渲染(Iter 7+ 公开)
 - **AI 临时草稿** → 不要保留，提交前清理
+
+**docs 三层职责**:
+
+- `architecture/` — 总章档案,改动门槛高(需 ADR 或维护者批准)
+- `prd/` — 每个功能一份单文件 PRD,滚动追加,模板 `_template.md`
+- `prototype/` — 原型资产库,按功能/组件/产品层级分,**原型代码答完即删**,这里只留问题+变体+决策
+
+**文档生命周期**(每个功能从立项到完成):
+1. GitHub Issue 立项 → 建 `prd/F<NNN>-<slug>.md`(用 `_template.md`)
+2. 设计参考 → 引 `architecture/overview` + 相关 ADR
+3. UI 决策 → 建 `prototype/<level>/<name>/`,决策回填 PRD
+4. 实施 → 写代码到 `apps/`,PRD 关联资源加代码路径
+5. 完成 → 更新 PRD status + roadmap + CHANGELOG
 
 ---
 

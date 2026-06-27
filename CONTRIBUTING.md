@@ -19,8 +19,8 @@
 ## 提 Issue 前请阅读
 
 1. [`README.md`](./README.md) — 了解项目
-2. [`docs/product/non-goals.md`](./docs/product/non-goals.md) — **如果你的想法在"不做"里，请别再提**
-3. [`docs/product/roadmap.md`](./docs/product/roadmap.md) — 看看是不是已在路线上
+2. [`docs/architecture/non-goals.md`](./docs/architecture/non-goals.md) — **如果你的想法在"不做"里，请别再提**
+3. [`docs/roadmap.md`](./docs/roadmap.md) — 看看是不是已在路线上
 
 ---
 
