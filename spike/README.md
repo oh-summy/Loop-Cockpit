@@ -10,9 +10,9 @@
 
 ## 当前 spikes
 
-| # | 名称 | 状态 | 负责 |
-|---|---|---|---|
-| 01 | `pty-demo.ts` — node-pty 拉起 Claude Code | 🔴 未开始 | @oh-summy |
+| # | 路径 | 名称 | 状态 | 负责 |
+|---|---|---|---|---|
+| 01 | [`pty/`](./pty/) | node-pty 拉起 Claude Code（+ I/O） | 🟡 骨架就位，未跑通 | @oh-summy |
 
 ## 计划
 

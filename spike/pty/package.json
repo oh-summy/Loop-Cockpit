@@ -1,0 +1,24 @@
+{
+  "name": "@loop-cockpit/spike-pty",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PTY 尖刀验证 — 不进 apps/，不进产品依赖树",
+  "type": "module",
+  "scripts": {
+    "00": "tsx 00-hello-spawn.ts",
+    "01": "tsx 01-spawn-claude.ts",
+    "02": "tsx 02-send-prompt.ts",
+    "check-env": "node -e \"console.log({node:process.version,platform:process.platform,arch:process.arch})\""
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.11.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

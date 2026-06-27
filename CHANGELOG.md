@@ -27,9 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - spike/ 与 notes/ 目录骨架
 - .github/ Issue / PR / CI 模板
 - .gitignore + .editorconfig
+- spike/pty PTY 尖刀跑通:00/01/02 全绿,验证 node-pty + claude 在 macOS x86_64 可行(拉起/捕获/收发 prompt/exit code)
 
 ### Notes
 
 - Iteration 1（Foundation）启动
 - License: MIT
-- 关键技术验证（PTY 尖刀）已完成,详见 [`docs/prd/F001-pty-runner.md`](docs/prd/F001-pty-runner.md)
+- 关键技术验证（PTY 尖刀）已完成:node-pty + claude 在 macOS x86_64 跑通(2026-06-26),详见 [`docs/prd/F001-pty-runner.md`](docs/prd/F001-pty-runner.md);Linux/Windows 留待 Iter 2
