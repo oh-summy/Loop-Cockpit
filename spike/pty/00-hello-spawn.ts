@@ -54,6 +54,7 @@ ptyProcess.onExit(({ exitCode, signal }) => {
     process.exit(exitCode ?? 1);
   }
   console.log("[hello-spawn] OK");
+  process.exit(0);
 });
 
 // 兜底超时（10s）

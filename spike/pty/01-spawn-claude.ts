@@ -64,6 +64,7 @@ ptyProcess.onExit(({ exitCode, signal }) => {
     process.exit(1);
   }
   console.log("[spawn-claude] OK");
+  process.exit(0);
 });
 
 // 5s 后兜底 kill（--help 应该会自然退，但 claude 行为未知）

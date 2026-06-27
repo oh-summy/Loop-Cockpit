@@ -33,14 +33,16 @@ spike/pty/
 └── pty-harness.ts         # 抽出来的最小可复用模块
 ```
 
-## 跑法（开干时填）
+## 跑法
 
 ```bash
 cd spike/pty
-pnpm install
-pnpm exec tsx 00-hello-spawn.ts
-pnpm exec tsx 01-spawn-claude.ts
-pnpm exec tsx 02-send-prompt.ts
+pnpm install                # 首次需在 pnpm-workspace.yaml 的 allowBuilds 放行 esbuild/node-pty
+chmod +x node_modules/node-pty/prebuilds/darwin-x64/spawn-helper  # 见 notes 坑3，每次 install 后复发
+pnpm run 00                 # spawn ls 验装机
+pnpm run 01                 # 拉起 claude --help（不花 token）
+pnpm run 02                 # 发真 prompt（消耗少量 token）
+pnpm run 02 -- "你的 prompt"
 ```
 
 ## 依赖（待开干时定版）
@@ -51,29 +53,45 @@ pnpm exec tsx 02-send-prompt.ts
 | `tsx` | `^4.0.0` | 跑 TS 不走构建 | `ts-node` |
 | `typescript` | `^5.4.0` | 类型 | — |
 
+> 实测版本（2026-06-26）：node-pty 1.1.0 / tsx 4.22.4 / typescript 5.9.3 / @types/node 20.19.43
+
 > ⚠️ **本周不**把这些升级到产品依赖。spike 结论达成后，依赖通过 ADR-0002 重新引入到 `apps/`。
 
 ## 进度（开干时勾选）
 
-- [ ] Day 1 (6/26 周五剩余 1–2h) — 工程骨架 + 00-hello-spawn 跑通
-- [ ] Day 2 上午 (6/27 周六 3h) — 01-spawn-claude 跑通（拉起 + exit）
-- [ ] Day 2 下午 (6/27 周六 2–3h) — 02-send-prompt 跑通（IO）
-- [ ] Day 3 上午 (6/28 周日 2–3h) — pty-harness 抽出 + e2e demo
-- [ ] Day 3 下午 (6/28 周日 1–2h) — 写本文件"结论"段 + PR 草稿
+- [x] Day 1 (6/26 周五) — 工程骨架 + 00-hello-spawn 跑通 ✅
+- [x] Day 2 上午 (6/26 晚提前) — 01-spawn-claude 跑通（拉起 + exit）✅
+- [x] Day 2 下午 (6/26 晚提前) — 02-send-prompt 跑通（IO）✅
+- [ ] Day 3 上午 — pty-harness 抽出 + e2e demo（按需，未做）
+- [x] Day 3 下午 — 写本文件"结论"段 ✅（PR 草稿待维护者决定是否合 main）
 
 **中场判定**：周六 20:00 还看不到 claude 启起来 → 降档到"最低止损"。
 
 ---
 
-## 结论（本周末跑完写在这里）
+## 结论
 
-> ⏳ 待填。模板：
->
-> - **结论**：✅ 可行 / ⚠️ 局部可行 / ❌ 不通
-> - **下一步**：
->   - 若 ✅：继续 Iter 2 用 node-pty 构建 Adapter；写 ADR-0002 收录决策
->   - 若 ⚠️：列出局部问题，评估 Iter 2 风险；可能需要 fallback 到 API 模式
->   - 若 ❌：触发 spec §7 风险登记的「PTY 跨平台不通」对策，重评技术方向
+**✅ 可行**（2026-06-26，macOS x86_64，claude 2.1.177）
+
+本周 MVP 标尺全达成：
+
+| 标尺 | 状态 | 证据 |
+|---|---|---|
+| node-pty 拉起 claude CLI | ✅ | 01: spawn `claude --help` exitCode=0 |
+| 捕获完整 ANSI 输出 | ✅ | 01: 12147 bytes 含色码；02: 含退出复位序列 |
+| 编程式收发 prompt | ✅ | 02: `claude -p "..."` → 回 `pong` |
+| exit code 正确 | ✅ | 00/01/02 均 exitCode=0 |
+
+**踩到的坑（已解，详见 notes.md）**：
+1. pnpm 11 用 `pnpm-workspace.yaml` 的 `allowBuilds` 放行 native addon build script（不是 package.json 的 `pnpm.onlyBuiltDependencies`）
+2. node-pty prebuild 的 `spawn-helper` 丢执行权限 → `posix_spawnp failed`，需 `chmod +x`（每次 install 复发）
+3. 骨架脚本 onExit 漏 `process.exit` → 兜底 timer 误触发（已修）
+
+**下一步**：
+- 写 ADR-0002（node-pty 选型 + 上述坑的对策：postinstall 自动 chmod、allowBuilds 配置）
+- Iter 2 在 `apps/host` 基于 node-pty 构建 Claude Code Adapter
+- Issue #2（[y/N] FSM）下周
+- Linux / Windows 平台验证留待 Iter 2（本 spike 仅 macOS）
 
 ---
 
