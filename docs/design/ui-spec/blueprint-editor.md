@@ -2,7 +2,7 @@
 title: Blueprint 编辑器 UI Spec v2(6 块重组)
 status: Draft
 related-prd: F002 v0.5
-related-prototype: prototype/features/blueprint-editor/v6/
+related-prototype: prototype/features/blueprint-editor/v7/
 supersedes: blueprint-editor.md v0.1
 updated: 2026-06-28
 ---
@@ -37,8 +37,8 @@ updated: 2026-06-28
 |---|---|---|
 | 1 触发与边界 | triggers[] · deadline · agent · model | Trigger / Worker(L5) |
 | 2 核心配置 | projectPath · goal.objective · goal.successCondition · goal.constraints | Goal(L1) · Tool Layer 部分 |
-| 3 生命周期 | Planner / Context Builder / Tool Layer(skills/tools/MCP/subagent) / Verification | L2 / L3 / L6 / L7 |
-| 4 反馈通知 | notification(★ 新字段) | Channel Hub(Iter 6,新接) |
+| 3 生命周期 | SDAF 4 阶段(Sense/Decide/Act/Feedback) · Skills/Tools/MCP/Subagent · 权限模式 · 系统提示词 | L2 · L3 · L6 · L7 |
+| 4 反馈通知 | notification(★ 新字段) + SDAF 阶段进度通知 | Channel Hub(Iter 6,新接) |
 | 5 失败重试 | retryPolicy · reflectionConfig | retry + L11 Reflection |
 | 6 禁止边界 | budget · deny(★ 新字段)· disallowedTools | Goal.budget + Tool Layer 限制 |
 
@@ -63,8 +63,8 @@ updated: 2026-06-28
 ├─────────────────────────────────────────────────────────────┤
 │ ▾ 3. 生命周期(感知-决策-行动-反馈)★ 专家可深度配置         │
 │    可用工具池: Skills / MCP / Tools / Subagents              │
-│    系统默认提示词                                            │
-│    Planner / Context Builder / Verification(展开后)         │
+│    系统默认提示词 · 权限模式                                 │
+│    SDAF 4 阶段详情展开(各阶段独立 Skills/提示词/Tools)     │
 ├─────────────────────────────────────────────────────────────┤
 │ ▾ 4. 反馈通知 ★ 新字段                                       │
 │    通知谁 + 怎么通知 + 通知什么事件                           │
@@ -146,8 +146,8 @@ updated: 2026-06-28
 
 ### 4.3 块 3 · 生命周期(感知-决策-行动-反馈)
 
-> **简单模式**:只显工具池 + 系统默认提示词。
-> **专家模式**:展开 Planner / Context Builder / Verification 完整配置。
+> **简单模式**:只显工具池 + 系统默认提示词 + 权限模式。
+> **专家模式**:展开 SDAF 4 阶段详情(Sense/Decide/Act/Feedback),每阶段独立配 Skills/提示词/Tools/权限/Model。
 
 #### 工具池(必显)
 所有可被 AI 使用的能力,4 子表:
@@ -177,16 +177,39 @@ plan / acceptEdits / bypassPermissions / interactive。
 | 干什么 | 整 Loop 的 system prompt 模板,变量 `{{goal.objective}}` 等 |
 | 后端 | Worker spawn `--append-system-prompt-file` |
 
-#### 专家展开 · Planner(L2,Iter 3)
-- Enable / Model / Replan / Max tasks per round
+#### 专家展开 · SDAF 4 阶段详情
 
-#### 专家展开 · Context Builder(L3,Iter 4)
-- Mode(all / rule-based / llm-select)
-- Rules 编辑器
+> SDAF = **S**ense(感知) → **D**ecide(决策) → **A**ct(行动) → **F**eedback(反馈)
+> 每阶段可独立配置 Skills / 提示词 / Tools / Model。默认值继承自块 3 全局。
 
-#### 专家展开 · Verification(L7,Iter 5 完整)
-- Goal Evaluator(shell / llm-judge / regex / human / compose)
-- Task Evaluator(可选)
+##### 感知 Sense — 收集上下文
+| 字段 | 干什么 |
+|---|---|
+| Skills | 只暴露读类型的 skills |
+| Tools | Read / Grep / WebFetch 等 |
+| Prompt | 给 AI 的增量提示词 |
+
+##### 决策 Decide — 出任务列表
+| 字段 | 干什么 |
+|---|---|
+| Skills | 规划类 skills |
+| Model | 思考用强 model(Opus),执行用便宜模型 |
+| Prompt | 按感知结果出任务,标优先级 |
+| Replan | 勾选=每轮重新规划 |
+
+##### 行动 Act — 执行任务
+| 字段 | 干什么 |
+|---|---|
+| Skills | 代码生成 / 测试类 skills |
+| Tools | Bash / Edit / Write,默认全开 |
+| Permission | plan / acceptEdits / bypassPermissions / interactive |
+
+##### 反馈 Feedback — 验证 + 通知 + 反思
+| 字段 | 干什么 |
+|---|---|
+| Verification | Goal evaluator(shell / llm-judge / regex / human / compose) |
+| Reflection | 启用反思 + 升级 model |
+| Notify | 每任务完成推送通知 |
 
 ### 4.4 块 4 · 反馈通知 ★ 新字段
 
@@ -199,20 +222,26 @@ plan / acceptEdits / bypassPermissions / interactive。
 | ☑ Loop 失败 | 失败时通知 | notification.on.failure |
 | ☑ Human Gate 触发 | 需人审时通知 | notification.on.humanGate |
 | ☑ 撞 budget 警告 | 接近预算时通知 | notification.on.budgetWarning |
-| ☑ 每 N 轮 / 每个里程碑 | 进度通知 | notification.on.progress |
+| ☑ 感知完成 | Sense 阶段完成时通知(专家) | notification.on.senseComplete |
+| ☑ 决策完成 | Decide 阶段完成时通知(专家) | notification.on.decideComplete |
+| ☑ 行动完成(每任务) | Act 阶段每任务完成推送(专家) | notification.on.actComplete |
+| ☑ 反馈完成 | Feedback 阶段完成时通知(专家) | notification.on.feedbackComplete |
 
-#### 通知渠道(可多选)
-| 渠道 | 干什么 | 后端 |
+#### 通知渠道(可多选,可配置)
+
+每个渠道都是可展开面板,勾选后显示配置字段:
+
+| 渠道 | 展开配置 | 后端 |
 |---|---|---|
-| 🖥 桌面通知 | 系统通知中心(macOS Notification Center) | notification.channels.desktop: boolean(Iter 6) |
-| 🌐 浏览器通知 | Web Notification API | notification.channels.browser: boolean(Iter 6) |
-| 📧 邮件 | SMTP | notification.channels.email: { to, smtp } |
-| 💬 飞书 | Lark Bot Webhook | notification.channels.lark: { webhookUrl } |
-| 💬 Slack | Slack Webhook | notification.channels.slack |
-| 💬 Discord | Discord Webhook | notification.channels.discord |
-| 💬 Telegram | Telegram Bot | notification.channels.telegram |
-| 🔧 自定义 Skill | 用 Skill 发(如 lark-im) | notification.channels.skill |
-| 🔧 自定义 CLI | 调用自定义命令 | notification.channels.cli: { command } |
+| 🖥 桌面通知 | 无额外字段 | notification.channels.desktop: boolean |
+| 🌐 浏览器通知 | 无额外字段 | notification.channels.browser: boolean |
+| 📧 邮件 | SMTP 服务器/端口 + 账号/密码 + 收件人 | notification.channels.email: { to, smtp } |
+| 💬 飞书 | Webhook URL | notification.channels.lark: { webhookUrl } |
+| 💬 Slack | Webhook URL | notification.channels.slack: { webhookUrl } |
+| 💬 Discord | Webhook URL | notification.channels.discord: { webhookUrl } |
+| 💬 Telegram | Bot Token + Chat ID | notification.channels.telegram: { botToken, chatId } |
+| 🔧 自定义 Skill | Prompt 输入框(写发给 skill 的指令) | notification.channels.skill: { prompt } |
+| 🔧 自定义 CLI | shell 命令文本 | notification.channels.cli: { command } |
 
 #### 通知内容模板
 | 字段 | 干什么 |
