@@ -125,6 +125,8 @@
   .expert-only { display: none; }
   body.expert-mode .expert-only { display: block; }
   body.expert-mode .expert-only-inline { display: inline-flex; }
+  .simple-only { display: block; }
+  body.expert-mode .simple-only { display: none; }
 
   /* Sticky 标题区(H6) */
   .bp-sticky-header {
@@ -634,13 +636,17 @@
       <div class="row">
         <label data-i18n="core_objective">目标 <span style="color:var(--danger)">*</span></label>
         <div>
-          <textarea rows="2" id="core-objective-ta" data-i18n-placeholder="core_objective_placeholder" placeholder="例:修复 Issue #123 / 让 main 分支保持健康" class="w-full px-3 py-2 rounded">保持 main 分支健康</textarea>
+          <textarea rows="5" id="core-objective-ta" data-i18n-placeholder="core_objective_placeholder" placeholder="例:修复 Issue #123 / 让 main 分支保持健康" class="w-full px-3 py-2 rounded">保持 main 分支健康</textarea>
+          <div class="flex items-center gap-2 mt-1">
+            <span class="text-dim text-[11px]" data-i18n="objective_display_hint">显示名:</span>
+            <span id="objective-display" class="text-dim text-[11px] mono" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">保持 main 分支健康</span>
+          </div>
           <div class="flex items-center gap-2 mt-1">
             <select id="objective-template-select" class="px-2 py-1 rounded text-[11px]" style="max-width:200px"><option value="">— 加载模板 —</option></select>
             <button class="btn xsmall" data-action="save-objective-template">💾 保存为模板</button>
             <button class="btn xsmall ghost" data-action="clear-objective">清空</button>
           </div>
-          <p class="text-dim text-[11px] mt-1" data-i18n="core_objective_desc">主目标,自然语言。也用作 Loop 显示名</p>
+          <p class="text-dim text-[11px] mt-1" data-i18n="core_objective_desc">主目标,自然语言。也用作 Loop 显示名(超 10 字符截断)</p>
         </div>
       </div>
 
@@ -700,8 +706,10 @@
     </div>
     <div class="block-body">
 
-      <p class="text-dim text-[11px] mb-3 surface-2 border-1 rounded p-2" data-i18n="tool_pool_hint">简单模式:一锅烩注入;专家模式:Context Builder 按需挑</p>
+      <p class="text-dim text-[11px] mb-3 surface-2 border-1 rounded p-2" data-i18n="tool_pool_hint">简单模式:一锅烩注入;专家模式:各阶段独立配置,顶层工具池不生效</p>
 
+      <!-- 简单模式: 工具池 -->
+      <div class="simple-only">
       <div class="row">
         <label data-i18n="tool_skills">Skills</label>
         <div>
@@ -758,10 +766,12 @@
       </div>
 
       <div class="row">
-        <label data-i18n="sys_prompt">系统提示词</label>
+        <label data-i18n="sys_prompt">系统提示词 <span class="text-dim">(全局默认)</span></label>
         <div>
           <textarea rows="3" data-i18n-placeholder="sys_prompt_placeholder" placeholder="留空使用默认模板" class="w-full px-3 py-2 rounded mono text-[12px]">{{goal.objective}} 在 {{projectPath}} 工作。所有改动须通过 {{successCondition}}。</textarea>
+          <p class="text-dim text-[11px] mt-1" data-i18n="sys_prompt_desc">整个 Loop 的 system prompt 模板,SDAF 各阶段提示词在此基础上叠加</p>
         </div>
+      </div>
       </div>
 
       <!-- 专家区:Planner / Context Builder / Verification -->
@@ -770,7 +780,7 @@
           <span data-i18n="sdaf_title">专家模式:感知-决策-行动-反馈 4 阶段</span>
           <span class="tok tok-iter ml-1">Iter 3+</span>
         </div>
-        <p class="text-dim text-[11px] mb-3" data-i18n="sdaf_intro">每阶段独立配 Skills + 提示词 + 工具。Loop 流程:感知→决策→行动→反馈</p>
+        <p class="text-dim text-[11px] mb-3" data-i18n="sdaf_intro">简单模式:顶层工具池全局生效;专家模式:每阶段独立配置 Skills/工具/提示词(叠加全局)</p>
 
         <!-- 感知 Sense -->
         <details class="sdaf-block">
@@ -781,14 +791,14 @@
           </summary>
           <div class="sdaf-body">
             <div class="row">
-              <label data-i18n="sdaf_prompt">感知提示词</label>
+              <label data-i18n="sdaf_prompt">提示词 <span class="text-dim">(增量,叠加全局)</span></label>
               <div>
-                <textarea rows="2" data-i18n-placeholder="sdaf_sense_prompt_ph" placeholder="例:读取 /src 下文件结构和 README.md,总结当前状态" class="w-full px-3 py-2 rounded mono text-[12px]">读取 {{projectPath}} 下文件结构和 README.md,总结当前状态</textarea>
-                <p class="text-dim text-[11px] mt-1" data-i18n="sdaf_prompt_desc">该阶段给 AI 的 system prompt 增量</p>
+                <textarea rows="3" data-i18n-placeholder="sdaf_sense_prompt_ph" placeholder="例:读取 /src 下文件结构和 README.md,总结当前状态" class="w-full px-3 py-2 rounded mono text-[12px]">读取 {{projectPath}} 下文件结构和 README.md,总结当前状态</textarea>
+                <p class="text-dim text-[11px] mt-1" data-i18n="sdaf_prompt_desc">叠加到全局系统提示词之上</p>
               </div>
             </div>
             <div class="row">
-              <label data-i18n="sdaf_sense_skills">感知 Skills</label>
+              <label data-i18n="sdaf_sense_skills">Skills</label>
               <div>
                 <div class="flex flex-wrap gap-1.5 mb-2">
                   <span class="chip">code-review <span class="x" data-action="remove-skill">×</span></span>
@@ -799,7 +809,7 @@
               </div>
             </div>
             <div class="row">
-              <label data-i18n="sdaf_sense_tools">感知 Tools</label>
+              <label data-i18n="sdaf_sense_tools">内建工具</label>
               <div class="flex flex-wrap gap-3 text-[12px]">
                 <label><input type="checkbox" checked/> Read</label>
                 <label><input type="checkbox" checked/> Glob</label>
@@ -827,13 +837,13 @@
           </summary>
           <div class="sdaf-body">
             <div class="row">
-              <label data-i18n="sdaf_prompt">决策提示词</label>
+              <label data-i18n="sdaf_prompt">提示词 <span class="text-dim">(增量,叠加全局)</span></label>
               <div>
-                <textarea rows="2" placeholder="根据感知结果,出本轮要做的任务,标优先级 P0/P1/P2" class="w-full px-3 py-2 rounded mono text-[12px]">根据感知结果,出本轮要做的任务,标优先级 P0/P1/P2</textarea>
+                <textarea rows="3" placeholder="根据感知结果,出本轮要做的任务,标优先级 P0/P1/P2" class="w-full px-3 py-2 rounded mono text-[12px]">根据感知结果,出本轮要做的任务,标优先级 P0/P1/P2</textarea>
               </div>
             </div>
             <div class="row">
-              <label data-i18n="sdaf_decide_model">决策 Model</label>
+              <label data-i18n="sdaf_decide_model">Model</label>
               <div class="flex items-center gap-2">
                 <select class="px-2 py-1 rounded"><option>Opus 4.8(推荐)</option><option>Sonnet 4.6</option></select>
                 <span class="text-dim text-[11px]" data-i18n="sdaf_decide_model_desc">思考用强 model,执行用便宜 model</span>
@@ -869,13 +879,13 @@
           </summary>
           <div class="sdaf-body">
             <div class="row">
-              <label data-i18n="sdaf_prompt">行动提示词</label>
+              <label data-i18n="sdaf_prompt">提示词 <span class="text-dim">(增量,叠加全局)</span></label>
               <div>
-                <textarea rows="2" placeholder="按决策给的任务,一个一个执行,改完用 doneCriteria 验" class="w-full px-3 py-2 rounded mono text-[12px]">按决策给的任务,一个一个执行,改完用 doneCriteria 验证</textarea>
+                <textarea rows="3" placeholder="按决策给的任务,一个一个执行,改完用 doneCriteria 验" class="w-full px-3 py-2 rounded mono text-[12px]">按决策给的任务,一个一个执行,改完用 doneCriteria 验证</textarea>
               </div>
             </div>
             <div class="row">
-              <label data-i18n="sdaf_act_skills">行动 Skills</label>
+              <label data-i18n="sdaf_act_skills">Skills</label>
               <div>
                 <div class="flex flex-wrap gap-1.5 mb-2">
                   <span class="chip">test-driven-development <span class="x" data-action="remove-skill">×</span></span>
@@ -885,7 +895,7 @@
               </div>
             </div>
             <div class="row">
-              <label data-i18n="sdaf_act_tools">行动 Tools</label>
+              <label data-i18n="sdaf_act_tools">内建工具</label>
               <div class="flex flex-wrap gap-3 text-[12px]">
                 <label><input type="checkbox" checked/> Bash</label>
                 <label><input type="checkbox" checked/> Edit</label>
@@ -1360,7 +1370,8 @@ const I18N = {
     tool_permission: '权限模式',
     perm_plan: 'plan(只读分析)', perm_accept_edits: 'acceptEdits(允许改文件)',
     perm_bypass: 'bypassPermissions(无人值守)', perm_interactive: 'interactive(每次确认)',
-    sys_prompt: '系统提示词', sys_prompt_placeholder: '留空使用默认模板',
+    sys_prompt: '系统提示词', sys_prompt_placeholder: '留空使用默认模板', sys_prompt_desc: '整个 Loop 的 system prompt 模板,SDAF 各阶段提示词在此基础上叠加',
+    objective_display_hint: '显示名:',
     none: '暂无',
 
     sec_planner: 'Planner · 规划器', planner_enable: '启用 Planner',
@@ -1482,7 +1493,8 @@ const I18N = {
     tool_permission: 'Permission Mode',
     perm_plan: 'plan (read-only)', perm_accept_edits: 'acceptEdits (file edits)',
     perm_bypass: 'bypassPermissions (unattended)', perm_interactive: 'interactive (confirm each)',
-    sys_prompt: 'System Prompt', sys_prompt_placeholder: 'Leave blank to use default',
+    sys_prompt: 'System Prompt', sys_prompt_placeholder: 'Leave blank to use default', sys_prompt_desc: 'Global system prompt template, SDAF stage prompts stack on top',
+    objective_display_hint: 'Display: ',
     none: 'None',
 
     // SDAF 4 modules (Expert mode)
@@ -2069,6 +2081,18 @@ function updateSuccessCmd() {
   const cmd = checked.map(c => CHECK_CMDS[c] || c).join(' && ');
   document.getElementById('success-cmd').value = cmd || '(空 = 不验证)';
 }
+
+// ============ 目标显示名截断 ============
+const objectiveTA = document.getElementById('core-objective-ta');
+const objectiveDisplay = document.getElementById('objective-display');
+function updateDisplayName() {
+  const val = objectiveTA?.value?.trim() || '';
+  if (objectiveDisplay) {
+    objectiveDisplay.textContent = val.length > 10 ? val.slice(0, 10) + '…' : val || '(空)';
+  }
+}
+objectiveTA?.addEventListener('input', updateDisplayName);
+updateDisplayName();
 
 document.querySelectorAll('[data-action="add-skill"]').forEach(btn => {
   btn.addEventListener('click', () => {
