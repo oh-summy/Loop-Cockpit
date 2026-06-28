@@ -14,15 +14,17 @@
 
 ## 总览
 
-| Iter | 主题 | 关键产出 | 时间 |
-|---|---|---|---|
-| 1 | **Foundation** | 文档骨架 + PTY 尖刀验证 | 2026-06-24 ~ 07-08 |
-| 2 | MVP Single-Loop | 单 Loop 跑通闭环 + 极简 UI | 07-08 ~ 07-22 |
-| 3 | Sandbox & Multi | Worktree + 多 Loop 并行 | 07-22 ~ 08-05 |
-| 4 | Trigger Bus | 多源触发器 + Webhook | 08-05 ~ 08-19 |
-| 5 | Memory & Audit | FTS5 记忆 + 完整审计 | 08-19 ~ 09-02 |
-| 6 | Channels + Dogfood | 飞书/Slack 通知 + 自己跑自己 | 09-02 ~ 09-16 |
-| 7+ | Multi-Agent / 1.0 发布 | OpenCode/Kimi 适配 + 公开发布 | 09-16 ~ |
+按 ADR-0010 「逐代逐层」实现 8 层自治架构:
+
+| Iter | 主题 | 加的层 | 关键产出 | 时间 |
+|---|---|---|---|---|
+| 1 | **Foundation** | - | 文档骨架 + PTY 尖刀验证 + 8 层架构 ADR | 2026-06-24 ~ 07-08 |
+| 2 | MVP 4 层 | L1 + L5 + L7 + L8 | 单 Loop 跑通,极简 UI | 07-08 ~ 07-22 |
+| 3 | +Planner +Reflection | L2 + Reflection | 多任务自治 + 失败反思 | 07-22 ~ 08-12 |
+| 4 | +Context +Orchestrator | L3 + L4 | 按需注入 + 多 source Trigger | 08-12 ~ 09-02 |
+| 5 | +Memory FTS5 +HumanGate | L8 升级 + Human Gate | 跨 Loop 经验 + 人审 | 09-02 ~ 09-23 |
+| 6 | Channels + Dogfood | - | 飞书/Slack + 自己跑自己 | 09-23 ~ 10-14 |
+| 7+ | Multi-Agent / 1.0 | - | OpenCode/Kimi 适配 + 公开发布 | 10-14 ~ |
 
 ---
 
@@ -45,45 +47,74 @@
 
 ---
 
-## Iter 2 · MVP Single-Loop
+## Iter 2 · MVP 4 层
 
-**目标**:一个 Loop 跑通完整闭环——UI 创建 → 手动触发 → Claude Code 执行 → Done Criteria 评估 → 重试或成功 → 落盘审计。
+**目标**:跑通最小 8 层架构子集 — `Trigger → Goal → Worker → Verification → Memory`,完整 Loop 闭环。
 
-**关键产出**:pnpm workspace + Fastify + Drizzle + node-pty + Claude Code Adapter + Run 状态机 + audit trail;Vite+React UI(Dashboard / Blueprint 编辑器 / Run 详情 Xterm 实时流);CI lint+test。
+**关键产出**:
+- L1 Goal:5 字段(objective/constraints/successCondition/deadline/budget)
+- L5 Worker:Claude Code Adapter,实现 `--bare/--session-id/--plugin-dir/--mcp-config/--agents/--tools` flag 集
+- L7 Verification:shell evaluator(单一,Iter 5 加多 evaluator)
+- L8 Memory:state.yaml(单 Run)+ SQLite runs/blueprints/phase_history 表
+- Trigger:Manual / Once / Cron
+- 极简 UI(简单模式):Goal + Trigger + Skills/Tools + Budget
+- Skill / MCP / Tools / Subagent 选取(从用户级 ~/.claude/ 读取,生成临时 plugin bundle)
+- audit-trail.json 落盘
 
-**验收门槛**:录视频从 UI 建 Blueprint → 点击运行 → Xterm 看 Agent 干活 → 成功落盘。
+**验收门槛**:录视频从 UI 建 Loop → 点击运行 → Xterm 看 Claude 跑 → Verification 通过落盘。
 
----
-
-## Iter 3 · Sandbox & Multi-Loop
-
-**目标**:Worktree 沙箱 + 多 Loop 并行。
-
-**关键产出**:Worktree 自动创建/销毁 + 失败保留现场 + UI "进入 worktree" 按钮;Run 队列 + 并发控制;Blueprint 绑定本地 git repo。
-
-**验收门槛**:**同时跑 2 个 Loop 不互相污染**,失败后能进 worktree 调试。
-
----
-
-## Iter 4 · Trigger Bus
-
-**目标**:Trigger 从 Cron+Manual 升级为真正的多源事件总线。
-
-**关键产出**:`TriggerSource` 接口实现(Manual/Cron/Webhook/Goal-based);Dispatcher 防抖+并发+失败重排;Trigger 配置 UI。**拉伸**:GitHub Webhook(PR/Issue)。
+> **注**:Iter 2 不上 Planner / Context Builder / Orchestrator 复杂调度。简化为「用户写 Goal → 1 个 Phase → Claude 一锅烩跑」,做出"能跑"的最小闭环。
 
 ---
 
-## Iter 5 · Memory & Audit
+## Iter 3 · +Planner +Reflection +更多 Trigger
 
-**目标**:Loop "记得住" + 每次 Run 完全可审计。
+**目标**:Loop 自治程度跨越 — Planner 拆任务、Reflection 失败反思,Trigger 接入 GitHub Webhook 联动。
 
-**关键产出**:SQLite FTS5 Memory + 失败模式自动入库 + 启动时按 Goal 检索注入;完整 `audit-trail.json` + UI 推理链查看 + Token 明细 + Worktree diff 可视化。
+**关键产出**:
+- L2 Planner:每轮 Loop 调 LLM 出任务列表 + 优先级
+- Reflection 横切:失败时 LLM 反思 → 改方案 / 升级 model / 针对性重试
+- Trigger 扩展:Webhook(POST /triggers/:id)/ Git push / PR / Issue / Comment
+- Worktree 沙箱(从 Iter 3 原计划保留)
+- UI:专家模式开关(暴露 Planner / Reflection 配置)
+
+**验收门槛**:一个 Loop 跑 3+ 轮自治推进,Planner 出新任务,失败时正确反思+重试。
+
+---
+
+## Iter 4 · +Context Builder +Orchestrator +CI/Email Trigger
+
+**目标**:Loop 能力差异化的核心 — 按需注入 Context,主/sub agent 编排,触发面扩到 CI 和邮件。
+
+**关键产出**:
+- L3 Context Builder:按任务 priority/type 挑 Memory + Skill + MCP + Tools + Files
+- L4 Orchestrator:主 agent + subagent 调度策略
+- Trigger 扩展:CI/CD 完成 / Email / 飞书/Slack/Discord 消息 / File Watch
+- UI:Context 规则编辑器(mapping `task.priority → ContextBundle`)
+
+**验收门槛**:复杂 Loop(如 Bug 修复)各阶段自动切换 Skill/Tool,UI 显示当前阶段的 Context 内容。
+
+---
+
+## Iter 5 · +Memory FTS5 +Human Gate +多 evaluator
+
+**目标**:跨 Loop 学习 + 人审能力 + 验证更强。
+
+**关键产出**:
+- L8 Memory 升级:SQLite FTS5 跨 Loop 经验复用
+- Human Gate 3 模式:interrupt / default-approve / default-reject
+- Verification 多 evaluator:llm-judge / regex / 组合(AND/OR)
+- 完整 audit-trail.json + UI 推理链查看
+- Worktree diff 可视化
+- Boot Trigger / upstream Loop / 条件 schedule
+
+**验收门槛**:一周内 Memory 复用一次,Human Gate 实测中断和恢复,完整 trace 可在 UI 复盘。
 
 ---
 
 ## Iter 6 · Channels + Dogfooding
 
-**目标**:Loop Cockpit 自己用起来——真正的检验时刻。
+**目标**:Loop Cockpit 自己用起来 — 项目真正的检验时刻。
 
 **关键产出**:Channel Hub(飞书/Slack/Email);自己跑自己的三个 Loops:
 - 每晚 23:00 跑 `pnpm lint && test && build`,失败发飞书
@@ -94,7 +125,9 @@
 
 ---
 
-## Iter 7+ · 候选
+## Iter 7+ · 多 Agent + 公开发布
+
+按 ADR-0010 + ADR-0009 完整 8 层都已稳定,可扩 Agent 适配 + 公开发布。
 
 | 主题 | 简述 |
 |---|---|
@@ -124,3 +157,4 @@
 |---|---|---|
 | 2026-06-24 | v0.1 | 首版 |
 | 2026-06-27 | v0.2 | 砍每 Iter 细 checkbox(已在 Issue),保留主题/产出/门槛/风险 |
+| 2026-06-28 | v1.0 | ★ 按 ADR-0010 8 层架构「逐代逐层」重排:Iter 2=4层MVP / Iter 3=+Planner+Reflection / Iter 4=+Context+Orchestrator / Iter 5=+Memory FTS5+Human Gate |

@@ -81,24 +81,56 @@ updated: 2026-06-28
 // apps/host/src/db/schema/blueprints.ts (Iter 2 实施)
 export const blueprints = sqliteTable("blueprints", {
   id: text("id").primaryKey().$defaultFn(() => nanoid()),
-  name: text("name").notNull(),
-  goal: text("goal").notNull(),
-  doneCriteria: text("done_criteria"),           // ⚠ 保留作向后兼容,新建用 phases[0].evaluator
+
+  // ★ Iter 2 v0.3 重构:删 name,以 goal.objective 当显示名
+  goal: text("goal", { mode: "json" }).$type<Goal>().notNull(),
+
+  // ⚠ 保留 doneCriteria 字段作向后兼容(等价于 goal.successCondition),Iter 3 起删
+  doneCriteria: text("done_criteria"),
+
   agent: text("agent").notNull(),
   model: text("model"),
   projectPath: text("project_path").notNull(),
   retryPolicy: text("retry_policy", { mode: "json" }).$type<RetryPolicy>().notNull(),
   triggers: text("triggers", { mode: "json" }).$type<TriggerConfig[]>().notNull().default(sql`'[]'`),
 
-  // ★ Iter 2 v0.2 新增 — Phase 编排
+  // ★ ADR-0009 Phase 编排
   phases: text("phases", { mode: "json" }).$type<Phase[]>().notNull().default(sql`'[]'`),
   startPhaseId: text("start_phase_id"),
 
-  type: text("type", { mode: "json" }).$type<string[]>().default(sql`'[]'`),  // bug / refactor / test / docs / check / other
+  type: text("type", { mode: "json" }).$type<string[]>().default(sql`'[]'`),
   status: text("status").$type<"active" | "disabled">().notNull().default("active"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 });
+
+// ★ ADR-0010 Layer 1 · Goal 完整 5 字段
+type Goal = {
+  objective: string;                  // 主目标(自然语言),例 "修复 Issue #123"。用作 Blueprint 显示名
+  constraints: string[];              // 硬约束,例 ["不能改 API", "不能升级 deps"]
+  successCondition: string;           // 客观可量化,机器可验证,例 "pnpm test && git diff API/ 为空"
+  deadline?: string;                  // ISO8601,可选
+  budget: {
+    maxRounds: number;                // default 20
+    maxTokensUSD: number;              // default 1.0
+    maxWallTimeMs: number;             // default 600000 (10min)
+  };
+};
+
+// 其他类型定义同前(Phase / RetryPolicy / TriggerConfig 等)
+```
+
+### 6.1.1 显示名约定(★ v0.3 改动)
+
+不再有独立 `name` 字段。Blueprint 在 UI / 列表 / 日志中显示 = `goal.objective` 的截断:
+- 列表显示:`goal.objective` 首 50 字符
+- 详情页标题:`goal.objective` 完整
+- audit trail / DB 内部仍用 `id`(nanoid)
+
+理由(基于 ADR-0010 + 维护者反馈):
+- 用户填一个 Loop 时心智模型是"我要让 AI 干什么",这就是 objective
+- 单独的 name 是冗余信息,会让用户填重复内容
+- 强制用户先想清楚 objective(产品引导)
 
 // Phase 完整定义见 ADR-0009
 type Phase = {
@@ -229,3 +261,4 @@ const BlueprintInputSchema = z.object({
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft,基于 Iter 2 主线 + 全部已 Accepted 决策 |
 | 2026-06-28 | v0.2 | ★ **重大改动**:加 `phases[]` / `startPhaseId` / `type[]` 字段;Blueprint 编辑器需重设计加 Phase 编辑区。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |
+| 2026-06-28 | v0.3 | ★★ **Goal 重构**:`name` 字段删除,`goal: string` → `goal: { objective, constraints[], successCondition, deadline?, budget }`。`doneCriteria` 字段保留作向后兼容(等价于 goal.successCondition)。详见 [ADR-0010 Layer 1](../architecture/decisions/0010-autonomous-loop-architecture.md) |
