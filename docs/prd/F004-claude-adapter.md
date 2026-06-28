@@ -110,6 +110,56 @@ claude -p "$PHASE_USER_MSG" \
   ...
 ```
 
+### 6.0.* Context Builder → Plugin Bundle 编排流程(★ v0.3 新增,ADR-0010 Layer 3)
+
+```typescript
+// apps/host/src/orchestrator/index.ts (Iter 4 起实施)
+async function buildAndSpawn(runId: string, task: Task) {
+  // 1. Context Builder 挑选(L3)
+  const bundle = await contextBuilder.build({
+    runId,
+    task,
+    memorySnapshot: await memory.read(runId),
+    blueprintConfig: await db.blueprints.get(blueprintId),
+  });
+
+  // 2. 生成临时 plugin bundle 目录
+  const loopDir = `${HOME}/.loop-cockpit/loops/${blueprintId}/${runId}/`;
+  const pluginDir = `${loopDir}/skills-bundle/`;
+  await fs.mkdir(pluginDir, { recursive: true });
+  await fs.writeFile(`${pluginDir}/plugin.json`, JSON.stringify({ name: `loop-${runId}` }));
+  for (const skillName of bundle.skills) {
+    // 软链接 或 复制 用户级 / 项目级 skill 进来
+    await fs.symlink(resolveSkill(skillName), `${pluginDir}/skills/${skillName}`);
+  }
+  await fs.writeFile(`${loopDir}/mcp.json`, JSON.stringify({ servers: bundle.mcpServers }));
+  await fs.writeFile(`${loopDir}/agents.json`, JSON.stringify(bundle.subagents));
+  await fs.writeFile(`${loopDir}/system-additions.md`, bundle.systemPromptAdditions);
+
+  // 3. spawn Claude Code
+  const adapter = new ClaudeCodeAdapter();
+  const proc = await adapter.start({
+    runId,
+    sessionId: run.claudeSessionId,
+    isFirst: run.currentRound === 0,
+    systemPrompt: bundle.systemPromptAdditions,
+    cwd: blueprint.projectPath,
+    toolsAllowed: bundle.tools,
+    skillsPluginDir: pluginDir,
+    mcpConfigPath: `${loopDir}/mcp.json`,
+    agentsJson: `${loopDir}/agents.json`,
+    permissionMode: bundle.permissionMode,
+    timeoutMs: bundle.timeoutMs,
+    effort: bundle.effort,
+    env: bundle.envVars,
+  });
+
+  // 4. 流式接 stream-json → 转发 WS + 落 raw.log + 截 errorSnippet
+  proc.onData(chunk => fanOut(chunk));
+  proc.onExit(result => verification.run(runId, task, result));
+}
+```
+
 ### 6.1 AgentAdapter 接口
 
 ```typescript
@@ -245,3 +295,4 @@ estimateTokens(rawOutput: string): { input: number; output: number; costUsd: num
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft |
 | 2026-06-28 | v0.2 | ★ 加阶段执行命令模板,详细 flag 集见 §6.0。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |
+| 2026-06-28 | v0.3 | ★★ 加 Context Builder → Plugin Bundle 编排流程(§6.0.*),展示 Iter 4 起的完整 spawn 链路;ADR-0010 落地 |

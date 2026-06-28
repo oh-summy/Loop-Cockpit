@@ -110,6 +110,25 @@ running 状态内部 = 逐 Phase 推进:
 
 每个 Phase 内部三态:`running → evaluating → (passed | failed | skipped)`。
 
+### 6.1.* Round-based 自治推进(★ v0.3 新增,ADR-0010)
+
+```
+running 状态外层 = 多轮(Round)推进,每轮:
+  1. 读 Memory(state.yaml)
+  2. Planner(L2): LLM 调用,出本轮任务列表
+  3. 对每个未完成的高优先级任务:
+     3a. Context Builder(L3): 挑 ContextBundle
+     3b. Orchestrator(L4): spawn claude(同 session-id)
+     3c. Worker(L5): Claude Code 执行
+     3d. Verification(L7): 评估结果,决策 next-task / replan / retry / human / terminal / fail
+     3e. Reflection 触发(失败时,Iter 3+)
+     3f. Human Gate 检查(Iter 5+)
+  4. 写 Memory(state.yaml + audit-trail.json append)
+  5. 决定下一轮 OR 终止
+```
+
+**Iter 2 简化**:Planner/Context Builder/Orchestrator 都简化为"用户写 Goal,直接 spawn claude 一锅烩跑",仅保留 Round 循环 + Memory + Verification。Iter 3 起逐层加。
+
 ### 6.2 DB Schema
 
 ```typescript
@@ -132,6 +151,17 @@ export const runs = sqliteTable("runs", {
   claudeSessionId: text("claude_session_id"),            // 同一 Run 内跨 Phase 共享的 UUID
   currentPhaseId: text("current_phase_id"),              // 当前在哪个 Phase
   phaseHistory: text("phase_history", { mode: "json" }).$type<PhaseExecution[]>().default(sql`'[]'`),
+
+  // ★ v0.3 新增 — 8 层自治 Round 推进(ADR-0010)
+  currentRound: integer("current_round").notNull().default(0),
+  goal: text("goal", { mode: "json" }).$type<GoalSnapshot>(),  // Run 启动时快照 Blueprint.goal
+  stateYamlPath: text("state_yaml_path"),                // ~/.loop-cockpit/runs/<runId>/state.yaml
+  budgetUsage: text("budget_usage", { mode: "json" }).$type<BudgetUsage>().default(sql`'{}'`),
+  // 各层运行时记录(Iter 3+ 加,Iter 2 暂空)
+  plannerHistory: text("planner_history", { mode: "json" }).$type<PlannerCall[]>().default(sql`'[]'`),  // Iter 3
+  verificationHistory: text("verification_history", { mode: "json" }).$type<VerifResult[]>().default(sql`'[]'`),
+  reflectionHistory: text("reflection_history", { mode: "json" }).$type<ReflectionEntry[]>().default(sql`'[]'`),  // Iter 3
+  humanGateHistory: text("human_gate_history", { mode: "json" }).$type<HumanGateEntry[]>().default(sql`'[]'`),  // Iter 5
 });
 
 interface PhaseExecution {
@@ -139,11 +169,60 @@ interface PhaseExecution {
   startedAt: timestamp;
   endedAt?: timestamp;
   status: 'running' | 'evaluating' | 'passed' | 'failed' | 'skipped';
-  evaluatorResult?: any;       // LLM judge 给的分类 / shell exit code / regex match
-  branchTaken?: string;        // 走了哪个分支
+  evaluatorResult?: any;
+  branchTaken?: string;
   toolCallCount: number;
   tokensIn: number;
   tokensOut: number;
+}
+
+// ★ v0.3 新增
+interface GoalSnapshot {
+  objective: string;
+  constraints: string[];
+  successCondition: string;
+  deadline?: string;
+  budget: { maxRounds: number; maxTokensUSD: number; maxWallTimeMs: number };
+}
+
+interface BudgetUsage {
+  tokensUsedUsd: number;
+  roundsUsed: number;
+  wallTimeMs: number;
+}
+
+interface PlannerCall {       // Iter 3
+  round: number;
+  calledAt: timestamp;
+  rationale: string;
+  tasks: { id: string; description: string; priority: string; successCriteria: string }[];
+  tokensUsed: number;
+}
+
+interface VerifResult {       // Iter 2 起
+  round: number;
+  taskId?: string;
+  evaluatorType: 'shell' | 'llm-judge' | 'regex' | 'human';
+  passed: boolean;
+  result: any;
+  nextAction: 'next-task' | 'replan' | 'retry' | 'human' | 'terminal' | 'fail';
+}
+
+interface ReflectionEntry {   // Iter 3
+  round: number;
+  failureReason: string;
+  diagnosis: string;
+  plannedFix: string;
+}
+
+interface HumanGateEntry {    // Iter 5
+  round: number;
+  taskId?: string;
+  mode: 'interrupt' | 'default-approve' | 'default-reject';
+  requestedAt: timestamp;
+  respondedAt?: timestamp;
+  decision: 'approve' | 'reject' | 'timeout';
+  decidedBy?: string;
 }
 
 type RunStatus = "idle" | "initializing" | "running" | "evaluating" | "success" | "retrying" | "failed" | "stopped";
@@ -227,3 +306,4 @@ async function advanceRun(runId: string) {
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft |
 | 2026-06-28 | v0.2 | ★ 加 Phase 子状态机 + claudeSessionId / currentPhaseId / phaseHistory 字段。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |
+| 2026-06-28 | v0.3 | ★★ 加 Round-based 自治推进(ADR-0010):currentRound / goal快照 / budgetUsage / stateYamlPath / plannerHistory / verificationHistory / reflectionHistory / humanGateHistory 字段;Iter 2 仅用 Round + Memory + Verification 子集,其他层 Iter 3+ 加 |

@@ -67,7 +67,99 @@ PRD §K(可审计性)是用户**强烈强调**的 MVP 必备能力。理由:
 
 ## 6. 数据契约 / 接口
 
-### 6.1 audit-trail.json schema
+### 6.0 8 层架构 audit 字段(★ v0.2 新增,ADR-0010)
+
+audit-trail.json 在 Run 终态时一次性写,**完整快照**所有层的决策路径:
+
+```json
+{
+  "schemaVersion": "2.0",
+  "runId": "r_K8xL2pQm9",
+  "blueprintId": "bp_xxx",
+  "blueprintSnapshot": { /* 完整 Blueprint 配置(8 层) */ },
+
+  "goalSnapshot": { /* Goal 5 字段 - L1 */ },
+
+  "execution": {
+    "startedAt": "...", "endedAt": "...", "durationMs": ...,
+    "claudeSessionId": "uuid",
+    "totalRounds": 3,
+    "totalTasks": 5,
+    "totalToolCalls": 23
+  },
+
+  "rounds": [          // ★ 8 层架构核心 - 每轮完整 trace
+    {
+      "round": 1,
+      "startedAt": "...",
+      "endedAt": "...",
+
+      // L2 Planner 决策
+      "planner": {
+        "model": "claude-opus-4-8",
+        "rationale": "先复现 bug,再定位,再修",
+        "tasks": [ { "id": "t1", "description": "...", "priority": "P0" } ],
+        "tokensUsed": 1234
+      },
+
+      // L3-L6 每个任务的执行
+      "taskExecutions": [
+        {
+          "taskId": "t1",
+          "contextBundle": {     // L3 - 注入了什么
+            "skills": [...],
+            "tools": [...],
+            "memoryEntries": [...]
+          },
+          "spawnCommand": "...", // L4 + L5
+          "toolCalls": [...],    // L5 全部 tool call timeline
+          "exitCode": 0,
+          "tokensUsed": 5678,
+
+          // L7 Verification
+          "verification": {
+            "evaluatorType": "shell",
+            "passed": true,
+            "result": { "exitCode": 0, "stdoutTail": "..." },
+            "nextAction": "next-task"
+          }
+        }
+      ],
+
+      // L8 Memory 写入(增量)
+      "memoryDelta": {
+        "added": [...],
+        "updated": [...]
+      },
+
+      // 横切 - Reflection(失败时)
+      "reflection": {
+        "failureReason": "...",
+        "diagnosis": "...",
+        "plannedFix": "..."
+      },
+
+      // 横切 - Human Gate(触发时)
+      "humanGate": {
+        "mode": "interrupt",
+        "requestedAt": "...",
+        "decision": "approve",
+        "decidedBy": "@oh-summy",
+        "respondedAt": "..."
+      }
+    }
+  ],
+
+  "finalState": {
+    "status": "success" | "failed" | "stopped",
+    "goalAchieved": true,
+    "budgetUsage": { "tokensUsedUsd": 0.18, "roundsUsed": 3, "wallTimeMs": ... },
+    "errorSnippet": null
+  }
+}
+```
+
+### 6.1 落盘时机
 
 ```json
 {
@@ -200,3 +292,4 @@ export async function writeAuditTrail(runId: string): Promise<void> {
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft |
+| 2026-06-28 | v0.2 | ★★ schema 升级到 2.0,加 8 层架构完整 trace 字段:rounds[] 每轮含 planner/taskExecutions/memoryDelta/reflection/humanGate(ADR-0010) |
