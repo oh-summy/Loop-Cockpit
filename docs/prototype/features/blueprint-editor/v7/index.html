@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Loop Cockpit · Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  (function(){ const t = localStorage.getItem('lc-theme') || 'dark'; if (t==='dark') document.documentElement.classList.add('dark'); })();
+  tailwind.config = { darkMode: 'class' }
+</script>
+<style>
+  :root {
+    --bg:#fafafa; --surface:#f3f3f4; --surface-2:#ffffff; --border:#e6e6e8; --border-strong:#d4d4d8;
+    --fg:#0a0a0b; --fg-muted:#71717a; --fg-dim:#a1a1aa;
+    --accent:#7c5cff; --accent-soft:rgba(124,92,255,0.10); --accent-hover:#6d4ce6;
+    --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  }
+  .dark {
+    --bg:#0a0a0b; --surface:#141416; --surface-2:#1c1c20; --border:#202023; --border-strong:#2a2a2e;
+    --fg:#e4e4e7; --fg-muted:#71717a; --fg-dim:#52525b;
+    --accent-soft:rgba(124,92,255,0.15);
+  }
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; font-size: 13px; line-height: 1.5; transition: background .15s, color .15s; }
+  .mono, code, input.mono, textarea.mono { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace; }
+
+  input, textarea, select { background: var(--surface-2); color: var(--fg); border: 1px solid var(--border); font-size: 13px; outline: none; transition: border-color .15s; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  input::placeholder, textarea::placeholder { color: var(--fg-dim); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  .surface { background: var(--surface); }
+  .surface-2 { background: var(--surface-2); }
+  .border-1 { border: 1px solid var(--border); }
+  .border-t-1 { border-top: 1px solid var(--border); }
+  .border-b-1 { border-bottom: 1px solid var(--border); }
+  .text-muted { color: var(--fg-muted); }
+  .text-dim { color: var(--fg-dim); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .12s; line-height: 1.2; }
+  .btn:hover { border-color: var(--border-strong); background: var(--surface); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
+  .btn.ghost:hover { background: var(--surface); color: var(--fg); }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn.xsmall { padding: 2px 6px; font-size: 11px; }
+  .btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* Stepper */
+  .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+  .stepper button { width: 28px; background: transparent; border: none; color: var(--fg-muted); cursor: pointer; font-size: 14px; }
+  .stepper button:hover { background: var(--surface); color: var(--fg); }
+  .stepper input { width: 48px; text-align: center; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 6px 4px; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+  /* Segmented */
+  .seg { display: inline-flex; padding: 2px; background: var(--surface); border-radius: 6px; gap: 1px; border: 1px solid var(--border); }
+  .seg button { padding: 4px 12px; border-radius: 4px; border: none; background: transparent; color: var(--fg-muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all .12s; }
+  .seg button.active { background: var(--accent); color: #fff; }
+  .seg button:not(.active):hover { background: var(--surface-2); color: var(--fg); }
+  .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Chips */
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--accent-soft); color: var(--accent); }
+  .chip .x { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
+  .chip .x:hover { opacity: 1; color: var(--danger); }
+
+  /* Section block - 6 块 */
+  .block { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .block-header { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 10px; user-select: none; transition: background .12s; }
+  .block-header:hover { background: var(--surface-2); }
+  .block.collapsed .block-header { border-bottom: none; }
+  .block-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+  .block-title { font-weight: 600; font-size: 14px; }
+  .block-desc { color: var(--fg-muted); font-size: 11px; margin-left: 8px; }
+  .block-toggle { margin-left: auto; color: var(--fg-dim); transition: transform .15s; }
+  .block.collapsed .block-toggle { transform: rotate(-90deg); }
+  .block-body { padding: 16px; }
+  .block.collapsed .block-body { display: none; }
+
+  /* Row */
+  .row { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: start; padding: 8px 0; }
+  .row > label { padding-top: 7px; color: var(--fg-muted); font-size: 12px; font-weight: 500; }
+  .row > div { min-width: 0; }
+
+  /* Tooltip */
+  .tip { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: help; color: var(--fg-dim); font-size: 11px; }
+  .tip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 240px; max-width: 340px; padding: 6px 10px; background: var(--fg); color: var(--bg); border-radius: 4px; font-size: 11px; line-height: 1.5; opacity: 0; pointer-events: none; transition: opacity .15s; z-index: 50; }
+  .tip:hover::after { opacity: 1; }
+
+  /* Token */
+  .tok { display: inline-flex; padding: 1px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; }
+  .tok-accent { background: var(--accent-soft); color: var(--accent); }
+  .tok-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+  .tok-danger { background: rgba(239,68,68,.15); color: var(--danger); }
+  .tok-iter { background: var(--surface-2); color: var(--fg-dim); border: 1px solid var(--border); }
+
+  /* Path prefix */
+  .path-wrap { position: relative; }
+  .path-wrap::before { content: '~'; position: absolute; left: 10px; top: 9px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; }
+  .path-wrap input { padding-left: 22px; padding-right: 90px; }
+
+  /* Shell prefix */
+  .shell-wrap { position: relative; }
+  .shell-wrap::before { content: '$'; position: absolute; left: 10px; top: 9px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; }
+  .shell-wrap textarea, .shell-wrap input { padding-left: 26px; }
+
+  /* Expert-only */
+  .expert-only { display: none; }
+  body.expert-mode .expert-only { display: block; }
+  body.expert-mode .expert-only-inline { display: inline-flex; }
+
+  /* Sticky 标题区(H6) */
+  .bp-sticky-header {
+    position: sticky;
+    top: 48px;
+    z-index: 30;
+    background: var(--bg);
+    padding-top: 16px;
+    padding-bottom: 4px;
+    margin-bottom: 0;
+  }
+
+  /* Time stepper (HH:MM) */
+  .time-stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+  .time-stepper button { width: 22px; background: transparent; border: none; color: var(--fg-muted); cursor: pointer; font-size: 13px; }
+  .time-stepper button:hover { background: var(--surface); color: var(--fg); }
+  .time-stepper input { width: 28px; text-align: center; border: none; padding: 5px 2px; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 13px; outline: none; }
+  .time-stepper span { display: flex; align-items: center; padding: 0 2px; color: var(--fg-dim); }
+
+  /* SDAF 4 模块折叠块(专家模式生命周期) */
+  .sdaf-block { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; overflow: hidden; }
+  .sdaf-block summary { list-style: none; cursor: pointer; padding: 8px 12px; display: flex; align-items: center; gap: 10px; user-select: none; transition: background .12s; }
+  .sdaf-block summary:hover { background: var(--surface); }
+  .sdaf-block summary::-webkit-details-marker { display: none; }
+  .sdaf-block summary::before { content: '▸'; color: var(--fg-dim); transition: transform .15s; }
+  .sdaf-block[open] summary::before { transform: rotate(90deg); }
+  .sdaf-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+  .sdaf-block[open] > .sdaf-body { padding: 0 12px 12px 12px; border-top: 1px solid var(--border); padding-top: 8px; }
+
+  /* 通知渠道 details(H4) */
+  .notify-channel { background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px; margin-bottom: 4px; overflow: hidden; }
+  .notify-channel summary { list-style: none; cursor: pointer; padding: 6px 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; user-select: none; transition: background .12s; }
+  .notify-channel summary:hover { background: var(--surface); }
+  .notify-channel summary::-webkit-details-marker { display: none; }
+  .notify-channel summary::before { content: '▸'; color: var(--fg-dim); transition: transform .15s; font-size: 10px; }
+  .notify-channel[open] summary::before { transform: rotate(90deg); }
+  .notify-channel[open] .notify-channel-body { padding: 8px 10px 10px 10px; border-top: 1px solid var(--border); }
+  .notify-channel summary input[type="checkbox"] { margin: 0; }
+</style>
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<header class="border-b-1 surface" style="position: sticky; top: 0; z-index: 40;">
+  <div class="max-w-[1100px] mx-auto px-6 h-12 flex items-center gap-6">
+    <span class="font-semibold flex items-center gap-1.5 text-[14px]">
+      <span style="color:var(--accent)" class="mono">▸</span>
+      Loop Cockpit
+    </span>
+    <nav class="flex gap-1 text-[12px] text-muted">
+      <a href="../../dashboard/index.html" class="px-2 py-1 rounded hover:bg-[var(--surface)]" data-i18n="nav_dashboard">首页</a>
+      <a href="#" class="px-2 py-1 rounded surface" style="color:var(--fg)" data-i18n="nav_blueprints">Loop 列表</a>
+      <a href="../../run-detail/v3/index.html" class="px-2 py-1 rounded hover:bg-[var(--surface)]" data-i18n="nav_runs">运行记录</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
+      <button id="lang-toggle" class="btn ghost xsmall">
+        <span>🌐</span><span id="lang-label">中</span>
+      </button>
+      <button id="theme-toggle" class="btn ghost xsmall">
+        <span id="theme-icon">🌙</span><span id="theme-label" data-i18n="theme_dark">暗色</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== Main ===== -->
+<main class="max-w-[1100px] mx-auto px-6 py-6">
+
+  <!-- 标题 + 顶部操作 + 模式 + 提示 + Type/Template — 全部 sticky -->
+  <div class="bp-sticky-header">
+    <!-- 标题 + 操作 -->
+    <div class="flex items-baseline justify-between mb-3">
+      <h1 class="text-[20px] font-semibold" data-i18n="bp_title_create">创建 Loop</h1>
+      <div class="flex items-center gap-2">
+        <div class="seg mr-2">
+          <button class="mode-toggle active" data-mode="simple" data-i18n="mode_simple">简单模式</button>
+          <button class="mode-toggle" data-mode="expert" data-i18n="mode_expert">专家模式</button>
+        </div>
+        <button class="btn" data-i18n="btn_cancel">取消</button>
+        <button class="btn" data-i18n="btn_save">保存</button>
+        <button class="btn primary" data-i18n="btn_save_run">保存并运行</button>
+      </div>
+    </div>
+    <p class="text-dim text-[11px] mb-3" id="mode-hint" data-i18n="bp_hint_simple">简单模式:触发 + 核心 + 生命周期 + 反馈 + 重试 + 边界</p>
+
+    <!-- Type + Template -->
+    <div class="flex items-center gap-3 pb-3 border-b-1">
+      <span class="text-muted text-[12px]" data-i18n="bp_type_label">类型</span>
+      <select class="px-3 py-1.5 rounded">
+        <option data-i18n="type_check">🔍 定期检查</option>
+      <option data-i18n="type_bug">🐛 Bug 修复</option>
+      <option data-i18n="type_refactor">🔧 重构</option>
+      <option data-i18n="type_test">🧪 测试</option>
+      <option data-i18n="type_docs">📝 文档</option>
+      <option data-i18n="type_other">⚙️ 其他</option>
+    </select>
+    <span class="text-dim">·</span>
+    <span class="text-muted text-[12px]" data-i18n="bp_template_label">模板</span>
+    <select class="px-3 py-1.5 rounded">
+      <option data-i18n="bp_template_builtin">系统内置(基础版)</option>
+      <option data-i18n="bp_template_blank">+ 空白</option>
+    </select>
+    <button class="btn small ml-auto" data-i18n="bp_save_as_template">💾 另存为我的模板</button>
+  </div>
+  </div><!-- /bp-sticky-header -->
+
+  <!-- ============ 块 1 · 触发与边界 ============ -->
+  <div class="block mt-4">
+    <div class="block-header" onclick="toggleBlock(this)">
+      <span class="block-num">1</span>
+      <span class="block-title" data-i18n="sec_trigger">触发与边界</span>
+      <span class="block-desc" data-i18n="sec_trigger_desc">什么时候启动 · 什么时候结束 · 用哪个 AI</span>
+      <span class="block-toggle">▾</span>
+    </div>
+    <div class="block-body">
+
+      <div class="row">
+        <label data-i18n="trigger_mode">触发方式</label>
+        <div>
+          <div class="seg">
+            <button class="trigger-mode active" data-mode="manual" data-i18n="trigger_manual">手动</button>
+            <button class="trigger-mode" data-mode="once" data-i18n="trigger_once">一次性</button>
+            <button class="trigger-mode" data-mode="schedule" data-i18n="trigger_schedule">定时</button>
+            <button class="trigger-mode" disabled>
+              <span data-i18n="trigger_webhook">Webhook</span>
+              <span class="tok tok-iter ml-1" data-i18n="trigger_iter_hint">(Iter 4 上线)</span>
+            </button>
+          </div>
+
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-manual">
+            <p class="text-[12px] text-muted" data-i18n="trigger_manual_desc">仅在 UI 点击「立即运行」时触发一次。</p>
+            <p class="text-dim text-[11px] mt-2" data-i18n="trigger_loop_hint">配合「重试次数 > 0」时仍是 Loop:AI 失败 → 自动 retry → 直到达成</p>
+          </div>
+
+          <!-- Once 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-once">
+            <label class="block text-[12px] text-muted mb-1" data-i18n="trigger_once_at">触发时刻</label>
+            <div class="flex items-center gap-2 mb-2">
+              <input type="datetime-local" id="once-datetime" class="px-2 py-1.5 rounded"/>
+              <button class="btn small" data-action="once-soonest" data-i18n="trigger_once_soonest">下一个整点</button>
+              <button class="btn small" data-action="once-tomorrow" data-i18n="trigger_once_tomorrow">明天 09:00</button>
+            </div>
+            <p class="text-dim text-[11px]" data-i18n="trigger_once_desc">到点运行一次,完成后 Blueprint 自动 disable</p>
+          </div>
+
+          <!-- Schedule 面板(cron 配置器 4 子模式) -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-schedule">
+            <div class="seg mb-3">
+              <button class="sched-tab active" data-sched="daily" data-i18n="sched_daily">每天</button>
+              <button class="sched-tab" data-sched="weekly" data-i18n="sched_weekly">每周</button>
+              <button class="sched-tab" data-sched="monthly" data-i18n="sched_monthly">每月</button>
+              <button class="sched-tab" data-sched="interval" data-i18n="sched_interval">每 N 天</button>
+              <button class="sched-tab" data-sched="cron" data-i18n="sched_cron">Cron 表达式</button>
+            </div>
+            <!-- 每天 -->
+            <div data-sched-panel="daily">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-dim text-[11px]" data-i18n="sched_add_time">添加时间:</span>
+                <div class="time-stepper" data-time-picker="daily">
+                  <button data-step="h" data-dir="-1">−</button>
+                  <input class="th" type="text" value="09" maxlength="2"/>
+                  <button data-step="h" data-dir="1">+</button>
+                  <span>:</span>
+                  <button data-step="m" data-dir="-1">−</button>
+                  <input class="tm" type="text" value="00" maxlength="2"/>
+                  <button data-step="m" data-dir="1">+</button>
+                </div>
+                <button class="btn small" data-action="add-time" data-target="daily" data-i18n="sched_add">+ 添加</button>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mb-2">
+                <span class="text-dim text-[11px]" data-i18n="sched_presets">快捷:</span>
+                <button class="chip-preset" data-quick="daily" data-time="00:00">0:00</button>
+                <button class="chip-preset" data-quick="daily" data-time="08:00">8:00</button>
+                <button class="chip-preset" data-quick="daily" data-time="12:00">12:00</button>
+                <button class="chip-preset" data-quick="daily" data-time="20:00">20:00</button>
+              </div>
+              <div class="flex flex-wrap gap-1.5" data-time-list="daily"></div>
+            </div>
+            <!-- 每周 -->
+            <div data-sched-panel="weekly" class="hidden">
+              <div class="text-dim text-[11px] mb-2" data-i18n="sched_weekdays">星期几(可多选):</div>
+              <div class="flex flex-wrap gap-1.5 mb-2" data-week-days></div>
+              <div class="text-dim text-[11px] mb-1" data-i18n="sched_presets">组合快捷:</div>
+              <div class="flex flex-wrap gap-1.5 mb-3">
+                <button class="chip-preset" data-combo="weekday-9" data-i18n="combo_weekday_9">工作日 9点</button>
+                <button class="chip-preset" data-combo="weekday-12" data-i18n="combo_weekday_12">工作日 12点</button>
+                <button class="chip-preset" data-combo="mon-0" data-i18n="combo_mon_0">周一 0点</button>
+                <button class="chip-preset" data-combo="weekend-10" data-i18n="combo_weekend_10">周末 10点</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-dim text-[11px]" data-i18n="sched_add_time">添加时间:</span>
+                <div class="time-stepper" data-time-picker="weekly">
+                  <button data-step="h" data-dir="-1">−</button>
+                  <input class="th" type="text" value="09" maxlength="2"/>
+                  <button data-step="h" data-dir="1">+</button>
+                  <span>:</span>
+                  <button data-step="m" data-dir="-1">−</button>
+                  <input class="tm" type="text" value="00" maxlength="2"/>
+                  <button data-step="m" data-dir="1">+</button>
+                </div>
+                <button class="btn small" data-action="add-time" data-target="weekly" data-i18n="sched_add">+ 添加</button>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mt-2" data-time-list="weekly"></div>
+            </div>
+            <!-- 每月 -->
+            <div data-sched-panel="monthly" class="hidden">
+              <div class="text-dim text-[11px] mb-2" data-i18n="sched_monthdays">日期(可多选,1-31):</div>
+              <div class="grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1.5 mb-1 max-w-[600px]" data-month-days></div>
+              <p class="text-dim text-[11px] mb-3">⚠ 29-31 号:不存在的月份会跳过</p>
+              <div class="flex items-center gap-2">
+                <span class="text-dim text-[11px]" data-i18n="sched_add_time">添加时间:</span>
+                <div class="time-stepper" data-time-picker="monthly">
+                  <button data-step="h" data-dir="-1">−</button>
+                  <input class="th" type="text" value="09" maxlength="2"/>
+                  <button data-step="h" data-dir="1">+</button>
+                  <span>:</span>
+                  <button data-step="m" data-dir="-1">−</button>
+                  <input class="tm" type="text" value="00" maxlength="2"/>
+                  <button data-step="m" data-dir="1">+</button>
+                </div>
+                <button class="btn small" data-action="add-time" data-target="monthly" data-i18n="sched_add">+ 添加</button>
+              </div>
+              <div class="flex flex-wrap gap-1.5 mt-2" data-time-list="monthly"></div>
+            </div>
+            <!-- 每 N 天 -->
+            <div data-sched-panel="interval" class="hidden">
+              <p class="text-dim text-[11px] mb-3" data-i18n="sched_interval_hint">从「起始时间」起,每 N 个周期触发一次。</p>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-dim text-[11px]" data-i18n="sched_every">每隔</span>
+                <div class="stepper">
+                  <button>−</button>
+                  <input type="text" value="3"/>
+                  <button>+</button>
+                </div>
+                <select class="px-2 py-1 rounded text-[12px]">
+                  <option data-i18n="sched_unit_day">天</option>
+                  <option data-i18n="sched_unit_week">周</option>
+                </select>
+                <span class="text-dim text-[11px]" data-i18n="sched_at_time">触发时间</span>
+                <div class="time-stepper">
+                  <button data-step="h" data-dir="-1">−</button>
+                  <input class="th" type="text" value="13" maxlength="2"/>
+                  <button data-step="h" data-dir="1">+</button>
+                  <span>:</span>
+                  <button data-step="m" data-dir="-1">−</button>
+                  <input class="tm" type="text" value="00" maxlength="2"/>
+                  <button data-step="m" data-dir="1">+</button>
+                </div>
+              </div>
+            </div>
+            <!-- Cron 表达式 -->
+            <div data-sched-panel="cron" class="hidden">
+              <div class="text-dim text-[11px] mb-1" data-i18n="sched_cron_hint">Cron 表达式(5 字段:分 时 日 月 星期)</div>
+              <input type="text" value="0 9 * * 1-5" class="w-full px-3 py-2 rounded mono text-[12px] mb-1"/>
+              <div class="text-[11px] flex items-center gap-2">
+                <span class="tok tok-ok">parsed</span>
+                <span class="mono">工作日 09:00</span>
+                <a href="https://crontab.guru" target="_blank" class="ml-auto" style="color:var(--accent)">crontab.guru ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deadline_label">Loop 截止</label>
+        <div>
+          <input type="datetime-local" class="px-2 py-1.5 rounded"/>
+          <p class="text-dim text-[11px] mt-1" data-i18n="deadline_desc">可选。超过这个时间 Loop 自动 disable</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="agent_label">AI 引擎</label>
+        <div class="grid grid-cols-2 gap-2">
+          <select class="px-3 py-2 rounded">
+            <option>Claude Code</option>
+            <option disabled>OpenCode (Iter 7+)</option>
+            <option disabled>Codex (Iter 7+)</option>
+          </select>
+          <select class="px-3 py-2 rounded">
+            <option>Sonnet 4.6 <span data-i18n="model_local_default">(本机默认)</span></option>
+            <option>Opus 4.8</option>
+            <option>Haiku 4.5</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 块 2 · 核心配置 ============ -->
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(this)">
+      <span class="block-num">2</span>
+      <span class="block-title" data-i18n="sec_core">核心配置</span>
+      <span class="block-desc" data-i18n="sec_core_desc">在哪儿工作 · 要达成什么 · 怎么算成功</span>
+      <span class="block-toggle">▾</span>
+    </div>
+    <div class="block-body">
+
+      <div class="row">
+        <label data-i18n="core_path">项目路径 <span style="color:var(--danger)">*</span></label>
+        <div>
+          <div class="path-wrap relative">
+            <input type="text" value="/Users/rocky/project/Loop-Cockpit" class="w-full px-3 py-1.5 rounded mono"/>
+            <button class="btn xsmall absolute right-1.5 top-1/2 -translate-y-1/2" data-i18n="btn_browse">📁 浏览</button>
+          </div>
+          <p class="text-dim text-[11px] mt-1" data-i18n="core_path_desc">Loop 工作目录,cwd + 文件读写边界基线</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="core_objective">目标 <span style="color:var(--danger)">*</span></label>
+        <div>
+          <textarea rows="2" data-i18n-placeholder="core_objective_placeholder" placeholder="例:修复 Issue #123 / 让 main 分支保持健康" class="w-full px-3 py-2 rounded">保持 main 分支健康</textarea>
+          <p class="text-dim text-[11px] mt-1" data-i18n="core_objective_desc">主目标,自然语言。也用作 Loop 显示名</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="core_success">成功标准 <span style="color:var(--danger)">*</span></label>
+        <div>
+          <div class="shell-wrap">
+            <textarea rows="2" class="w-full px-3 py-2 rounded mono">pnpm lint &amp;&amp; pnpm test &amp;&amp; pnpm build</textarea>
+          </div>
+          <div class="flex items-center justify-between mt-1">
+            <p class="text-dim text-[11px]" data-i18n="core_success_desc">客观可量化判定,机器可执行 shell 命令</p>
+            <button class="btn ghost xsmall"><span>🧪</span> <span data-i18n="btn_dry_run">试跑</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="core_constraints">约束</label>
+        <div>
+          <div id="constraints-list" class="space-y-1.5 mb-2">
+            <div class="flex gap-2 constraint-row">
+              <input type="text" value="不能改 API 接口" class="flex-1 px-3 py-1.5 rounded"/>
+              <button class="btn xsmall danger" data-action="remove-constraint" data-i18n="btn_remove">移除</button>
+            </div>
+          </div>
+          <button class="btn small" data-action="add-constraint">+ <span data-i18n="btn_add">添加</span></button>
+          <p class="text-dim text-[11px] mt-1" data-i18n="core_constraints_desc">硬约束,每条 1 行(例:不能改 API)</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 块 3 · 生命周期 ============ -->
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(this)">
+      <span class="block-num">3</span>
+      <span class="block-title" data-i18n="sec_lifecycle">生命周期(感知-决策-行动-反馈)</span>
+      <span class="block-desc" data-i18n="sec_lifecycle_desc">AI 每轮怎么思考 · 用什么工具 · 怎么验证</span>
+      <span class="block-toggle">▾</span>
+    </div>
+    <div class="block-body">
+
+      <p class="text-dim text-[11px] mb-3 surface-2 border-1 rounded p-2" data-i18n="tool_pool_hint">简单模式:一锅烩注入;专家模式:Context Builder 按需挑</p>
+
+      <div class="row">
+        <label data-i18n="tool_skills">Skills</label>
+        <div>
+          <div class="flex flex-wrap gap-1.5 mb-2" id="skills-chips">
+            <span class="chip">brainstorming <span class="x" data-action="remove-skill">×</span></span>
+            <span class="chip">test-driven-development <span class="x" data-action="remove-skill">×</span></span>
+            <span class="chip">systematic-debugging <span class="x" data-action="remove-skill">×</span></span>
+          </div>
+          <button class="btn small" data-action="add-skill">+ <span data-i18n="tool_add_skill">添加 skill</span></button>
+          <span class="text-dim text-[11px] ml-2" data-i18n="tool_skills_scanned">已扫描 12 个用户级 + 2 个项目级 skill</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="tool_tools">内建工具</label>
+        <div class="flex flex-wrap gap-3 text-[12px]">
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> Bash</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> Read</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> Edit</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> Write</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> Glob</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> Grep</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox"/> WebFetch</label>
+          <label class="flex items-center gap-1.5"><input type="checkbox"/> WebSearch</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="tool_mcp">MCP</label>
+        <div>
+          <div id="mcp-list" class="space-y-1.5 mb-2"></div>
+          <button class="btn small" data-action="add-mcp">+ <span data-i18n="tool_add_mcp">添加 MCP</span></button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="tool_subagent">Subagent</label>
+        <div>
+          <div id="subagent-list" class="space-y-1.5 mb-2"></div>
+          <button class="btn small" data-action="add-subagent">+ <span data-i18n="tool_add_subagent">添加 Subagent</span></button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="tool_permission">权限模式</label>
+        <div>
+          <select class="px-3 py-2 rounded">
+            <option value="plan" data-i18n="perm_plan">plan(只读分析)</option>
+            <option value="acceptEdits" selected data-i18n="perm_accept_edits">acceptEdits(允许改文件)</option>
+            <option value="bypassPermissions" data-i18n="perm_bypass">bypassPermissions(无人值守)</option>
+            <option value="interactive" data-i18n="perm_interactive">interactive(每次确认)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="sys_prompt">系统提示词</label>
+        <div>
+          <textarea rows="3" data-i18n-placeholder="sys_prompt_placeholder" placeholder="留空使用默认模板" class="w-full px-3 py-2 rounded mono text-[12px]">{{goal.objective}} 在 {{projectPath}} 工作。所有改动须通过 {{successCondition}}。</textarea>
+        </div>
+      </div>
+
+      <!-- 专家区:Planner / Context Builder / Verification -->
+      <div class="expert-only border-t-1 mt-4 pt-4">
+        <div class="text-[12px] font-semibold mb-3" style="color:var(--accent)">
+          <span data-i18n="sdaf_title">专家模式:感知-决策-行动-反馈 4 阶段</span>
+          <span class="tok tok-iter ml-1">Iter 3+</span>
+        </div>
+        <p class="text-dim text-[11px] mb-3" data-i18n="sdaf_intro">每阶段独立配 Skills + 提示词 + 工具。Loop 流程:感知→决策→行动→反馈</p>
+
+        <!-- 感知 Sense -->
+        <details class="sdaf-block">
+          <summary>
+            <span class="sdaf-num">S</span>
+            <span data-i18n="sdaf_sense">感知</span>
+            <span class="text-dim text-[11px]" data-i18n="sdaf_sense_desc">读仓库/文档/环境,收集上下文</span>
+          </summary>
+          <div class="sdaf-body">
+            <div class="row">
+              <label data-i18n="sdaf_prompt">感知提示词</label>
+              <div>
+                <textarea rows="2" data-i18n-placeholder="sdaf_sense_prompt_ph" placeholder="例:读取 /src 下文件结构和 README.md,总结当前状态" class="w-full px-3 py-2 rounded mono text-[12px]">读取 {{projectPath}} 下文件结构和 README.md,总结当前状态</textarea>
+                <p class="text-dim text-[11px] mt-1" data-i18n="sdaf_prompt_desc">该阶段给 AI 的 system prompt 增量</p>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_sense_skills">感知 Skills</label>
+              <div>
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <span class="chip">code-review <span class="x" data-action="remove-skill">×</span></span>
+                  <span class="chip">systematic-debugging <span class="x" data-action="remove-skill">×</span></span>
+                </div>
+                <button class="btn small" data-action="add-skill">+ <span data-i18n="tool_add_skill">添加 skill</span></button>
+                <p class="text-dim text-[11px] mt-1" data-i18n="sdaf_sense_skills_desc">只在感知阶段暴露这些 skills</p>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_sense_tools">感知 Tools</label>
+              <div class="flex flex-wrap gap-3 text-[12px]">
+                <label><input type="checkbox" checked/> Read</label>
+                <label><input type="checkbox" checked/> Glob</label>
+                <label><input type="checkbox" checked/> Grep</label>
+                <label><input type="checkbox" checked/> Bash</label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- 决策 Decide -->
+        <details class="sdaf-block">
+          <summary>
+            <span class="sdaf-num">D</span>
+            <span data-i18n="sdaf_decide">决策</span>
+            <span class="text-dim text-[11px]" data-i18n="sdaf_decide_desc">Planner 出任务列表,定优先级</span>
+          </summary>
+          <div class="sdaf-body">
+            <div class="row">
+              <label data-i18n="sdaf_prompt">决策提示词</label>
+              <div>
+                <textarea rows="2" placeholder="根据感知结果,出本轮要做的任务,标优先级 P0/P1/P2" class="w-full px-3 py-2 rounded mono text-[12px]">根据感知结果,出本轮要做的任务,标优先级 P0/P1/P2</textarea>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_decide_model">决策 Model</label>
+              <div class="flex items-center gap-2">
+                <select class="px-2 py-1 rounded"><option>Opus 4.8(推荐)</option><option>Sonnet 4.6</option></select>
+                <span class="text-dim text-[11px]" data-i18n="sdaf_decide_model_desc">思考用强 model,执行用便宜 model</span>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_decide_replan">重新决策</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="planner_replan">每轮重新规划</span></label>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="planner_max_tasks">最多任务/轮</label>
+              <div class="stepper"><button>−</button><input value="5"/><button>+</button></div>
+            </div>
+          </div>
+        </details>
+
+        <!-- 行动 Act -->
+        <details class="sdaf-block">
+          <summary>
+            <span class="sdaf-num">A</span>
+            <span data-i18n="sdaf_act">行动</span>
+            <span class="text-dim text-[11px]" data-i18n="sdaf_act_desc">Worker 实际执行任务(写代码/跑命令)</span>
+          </summary>
+          <div class="sdaf-body">
+            <div class="row">
+              <label data-i18n="sdaf_prompt">行动提示词</label>
+              <div>
+                <textarea rows="2" placeholder="按决策给的任务,一个一个执行,改完用 doneCriteria 验" class="w-full px-3 py-2 rounded mono text-[12px]">按决策给的任务,一个一个执行,改完用 doneCriteria 验证</textarea>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_act_skills">行动 Skills</label>
+              <div>
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  <span class="chip">test-driven-development <span class="x" data-action="remove-skill">×</span></span>
+                  <span class="chip">writing-plans <span class="x" data-action="remove-skill">×</span></span>
+                </div>
+                <button class="btn small" data-action="add-skill">+ <span data-i18n="tool_add_skill">添加 skill</span></button>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_act_tools">行动 Tools</label>
+              <div class="flex flex-wrap gap-3 text-[12px]">
+                <label><input type="checkbox" checked/> Bash</label>
+                <label><input type="checkbox" checked/> Edit</label>
+                <label><input type="checkbox" checked/> Write</label>
+                <label><input type="checkbox"/> Read</label>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="tool_permission">权限模式</label>
+              <div>
+                <select class="px-3 py-2 rounded">
+                  <option value="plan">plan(只读)</option>
+                  <option value="acceptEdits" selected>acceptEdits(可改文件)</option>
+                  <option value="bypassPermissions">bypassPermissions(无人值守)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <!-- 反馈 Feedback -->
+        <details class="sdaf-block">
+          <summary>
+            <span class="sdaf-num">F</span>
+            <span data-i18n="sdaf_feedback">反馈</span>
+            <span class="text-dim text-[11px]" data-i18n="sdaf_feedback_desc">Verification + 通知 + Reflection</span>
+          </summary>
+          <div class="sdaf-body">
+            <div class="row">
+              <label data-i18n="sec_verification">Verification · 验证器</label>
+              <div>
+                <select class="px-3 py-1.5 rounded">
+                  <option value="shell" selected>shell - 退出码 0=pass(默认)</option>
+                  <option value="llm-judge">llm-judge - LLM 分类判定</option>
+                  <option value="regex">regex - 匹配输出</option>
+                  <option value="human">human - 必审</option>
+                  <option value="compose">compose - AND/OR 组合</option>
+                </select>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sec_reflection">Reflection · 反思</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="reflection_enable">启用反思</span></label>
+                <p class="text-dim text-[11px] mt-1" data-i18n="sec_reflection_desc">基于 Reflexion 论文:LLM 反思 → 改方案 → 针对性重试</p>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_feedback_notify">反馈到通知</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="sdaf_feedback_notify_desc">行动阶段每完成一个任务,推送通知(详见块 4)</span></label>
+              </div>
+            </div>
+          </div>
+        </details>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 块 4 · 反馈通知 ============ -->
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(this)">
+      <span class="block-num">4</span>
+      <span class="block-title" data-i18n="sec_notification">反馈通知</span>
+      <span class="block-desc" data-i18n="sec_notification_desc">通知谁 · 通过什么渠道 · 通知什么事件</span>
+      <span class="block-toggle">▾</span>
+    </div>
+    <div class="block-body">
+
+      <div class="row">
+        <label data-i18n="notify_on">通知事件</label>
+        <div class="grid grid-cols-2 gap-2 text-[12px]">
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="notify_on_success">Loop 成功</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="notify_on_failure">Loop 失败</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="notify_on_human">需人审</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="notify_on_budget">撞预算警告</span></label>
+        </div>
+      </div>
+
+      <!-- ★ 进度通知:每个 SDAF 阶段(仅专家模式显示) -->
+      <div class="expert-only row">
+        <label data-i18n="notify_on_progress_title">进度通知(SDAF 阶段)</label>
+        <div class="grid grid-cols-2 gap-2 text-[12px]">
+          <label class="flex items-center gap-1.5"><input type="checkbox" data-action="notify-progress" data-stage="sense"/> <span data-i18n="sdaf_sense_notify">感知完成通知</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" data-action="notify-progress" data-stage="decide"/> <span data-i18n="sdaf_decide_notify">决策完成通知</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked data-action="notify-progress" data-stage="act"/> <span data-i18n="sdaf_act_notify">行动完成通知(每任务)</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked data-action="notify-progress" data-stage="feedback"/> <span data-i18n="sdaf_feedback_notify_check">反馈完成通知</span></label>
+        </div>
+        <p class="text-dim text-[11px] mt-2 col-span-2" data-i18n="notify_on_progress_desc">每个 SDAF 阶段完成时分别推送通知(默认:行动 + 反馈)</p>
+      </div>
+
+      <div class="row">
+        <label data-i18n="notify_channels">通知渠道</label>
+        <div class="space-y-2">
+          <!-- 渠道可点击展开配置 -->
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" checked onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_desktop">🖥 桌面通知</span>
+            </summary>
+            <div class="notify-channel-body">
+              <p class="text-dim text-[11px]">系统通知中心(macOS Notification Center 等),无需配置</p>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_browser">🌐 浏览器通知</span>
+            </summary>
+            <div class="notify-channel-body">
+              <p class="text-dim text-[11px]">Web Notification API,首次需用户授权</p>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_email">📧 邮件</span>
+            </summary>
+            <div class="notify-channel-body space-y-2">
+              <input type="text" placeholder="smtp.example.com:587" class="w-full px-2 py-1.5 rounded text-[12px]"/>
+              <input type="text" placeholder="user@example.com" class="w-full px-2 py-1.5 rounded text-[12px]"/>
+              <input type="text" placeholder="app password" class="w-full px-2 py-1.5 rounded text-[12px]"/>
+              <input type="text" placeholder="收件人:team@example.com" class="w-full px-2 py-1.5 rounded text-[12px]"/>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" checked onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_lark">💬 飞书</span>
+            </summary>
+            <div class="notify-channel-body space-y-2">
+              <input type="text" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx" class="w-full px-2 py-1.5 rounded mono text-[11px]"/>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_slack">💬 Slack</span>
+            </summary>
+            <div class="notify-channel-body space-y-2">
+              <input type="text" placeholder="https://hooks.slack.com/services/xxxxx" class="w-full px-2 py-1.5 rounded mono text-[11px]"/>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_telegram">💬 Telegram</span>
+            </summary>
+            <div class="notify-channel-body space-y-2">
+              <input type="text" placeholder="Bot Token" class="w-full px-2 py-1.5 rounded mono text-[11px]"/>
+              <input type="text" placeholder="Chat ID" class="w-full px-2 py-1.5 rounded text-[12px]"/>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_skill">🔧 自定义 Skill</span>
+            </summary>
+            <div class="notify-channel-body space-y-2">
+              <p class="text-dim text-[11px]">用 Skill 发(如 lark-im),在 Skill 输入框里写通知内容</p>
+              <input type="text" placeholder="Skill 名: lark-im" class="w-full px-2 py-1.5 rounded text-[12px]"/>
+              <textarea rows="2" placeholder="提示词: 用 lark cli 通知 XXX" class="w-full px-2 py-2 rounded text-[12px]"></textarea>
+            </div>
+          </details>
+
+          <details class="notify-channel">
+            <summary>
+              <input type="checkbox" onclick="event.stopPropagation()"/>
+              <span data-i18n="ch_cli">🔧 自定义 CLI</span>
+            </summary>
+            <div class="notify-channel-body space-y-2">
+              <input type="text" placeholder="通知命令(例: notify 'Loop 完成 {{loop.objective}}')" class="w-full px-2 py-1.5 rounded mono text-[12px]"/>
+              <p class="text-dim text-[11px]">执行 {{event.json}} 获取通知内容</p>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      <div class="expert-only">
+        <div class="row">
+          <label data-i18n="notify_template">通知模板</label>
+          <div>
+            <textarea rows="3" class="w-full px-3 py-2 rounded mono text-[12px]">📋 Loop {{loop.objective}} {{event.type}}
+Round: {{run.round}} · Cost: ${{run.cost}}
+{{event.message}}</textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 块 5 · 失败重试 ============ -->
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(this)">
+      <span class="block-num">5</span>
+      <span class="block-title" data-i18n="sec_retry">失败重试</span>
+      <span class="block-desc" data-i18n="sec_retry_desc">失败几次后放弃 · 是否升级 model · 超时</span>
+      <span class="block-toggle">▾</span>
+    </div>
+    <div class="block-body">
+
+      <div class="row">
+        <label data-i18n="retry_max">最多重试次数</label>
+        <div class="flex items-center gap-3">
+          <div class="stepper"><button>−</button><input value="3"/><button>+</button></div>
+          <span class="text-dim text-[11px]" data-i18n="retry_max_desc">0 = 不重试</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="retry_timeout">单次超时</label>
+        <div class="flex items-center gap-2">
+          <div class="stepper"><button>−</button><input value="10"/><button>+</button></div>
+          <select class="px-2 py-1 rounded text-[12px]">
+            <option value="min">分钟</option>
+            <option value="hour">小时(0.5 步长)</option>
+          </select>
+          <span class="text-dim text-[11px]" data-i18n="retry_timeout_desc">超时被 SIGKILL,防卡死</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="retry_on_fail">彻底失败时</label>
+        <div>
+          <select class="px-3 py-1.5 rounded">
+            <option data-i18n="retry_on_notify">通知</option>
+            <option data-i18n="retry_on_stop">停止</option>
+            <option data-i18n="retry_on_escalate">升级 model 重试</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="expert-only">
+        <div class="border-t-1 mt-4 pt-4">
+          <div class="text-[12px] font-semibold mb-3" style="color:var(--accent)">
+            <span data-i18n="sec_reflection">Reflection · 反思</span>
+            <span class="tok tok-iter ml-1">Iter 3</span>
+          </div>
+          <div class="row">
+            <label data-i18n="reflection_enable">启用反思</label>
+            <div>
+              <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="sec_reflection_desc">基于 Reflexion 论文:LLM 反思 → 改方案 → 针对性重试</span></label>
+            </div>
+          </div>
+          <div class="row">
+            <label data-i18n="reflection_escalate">N 次失败后升级</label>
+            <div class="flex items-center gap-2">
+              <div class="stepper"><button>−</button><input value="2"/><button>+</button></div>
+              <span class="text-dim text-[11px]" data-i18n="reflection_escalate_model">升级到 Opus</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ 块 6 · 禁止边界 ============ -->
+  <div class="block">
+    <div class="block-header" onclick="toggleBlock(this)">
+      <span class="block-num">6</span>
+      <span class="block-title" data-i18n="sec_deny">禁止边界</span>
+      <span class="block-desc" data-i18n="sec_deny_desc">Token / 花费上限 · 禁止编辑哪些文件 · 禁止命令</span>
+      <span class="block-toggle">▾</span>
+    </div>
+    <div class="block-body">
+
+      <div class="text-[12px] font-semibold mb-2" data-i18n="deny_budget">预算上限</div>
+
+      <div class="row">
+        <label data-i18n="deny_budget_rounds">总 Round 上限</label>
+        <div class="flex items-center gap-3">
+          <div class="stepper"><button>−</button><input value="10"/><button>+</button></div>
+          <span class="text-dim text-[11px]">轮</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_budget_tokens">Token 上限($)</label>
+        <div class="flex items-center gap-3">
+          <span class="text-muted">$</span>
+          <input type="text" value="" placeholder="(空 = 不限)" class="px-2 py-1.5 rounded mono w-28"/>
+          <span class="text-dim text-[11px]">撞了停</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_budget_time">Wall time 上限</label>
+        <div class="flex items-center gap-3">
+          <div class="stepper"><button>−</button><input value="10"/><button>+</button></div>
+          <select class="px-2 py-1 rounded text-[12px]"><option>min</option><option>hour</option></select>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_budget_warn">警告阈值 %</label>
+        <div class="flex items-center gap-3">
+          <div class="stepper"><button>−</button><input value="80"/><button>+</button></div>
+          <span class="text-dim text-[11px]">达到阈值发通知</span>
+        </div>
+      </div>
+
+      <div class="text-[12px] font-semibold mt-4 mb-2" data-i18n="deny_files">文件保护</div>
+
+      <div class="row">
+        <label data-i18n="deny_edit_paths">禁止编辑</label>
+        <div>
+          <div id="deny-edit-list" class="space-y-1.5 mb-2"></div>
+          <button class="btn small" data-action="add-deny-edit">+ <span data-i18n="deny_add">添加文件/文件夹</span></button>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_delete_paths">禁止删除</label>
+        <div>
+          <div id="deny-delete-list" class="space-y-1.5 mb-2"></div>
+          <button class="btn small" data-action="add-deny-delete">+ <span data-i18n="deny_add">添加文件/文件夹</span></button>
+        </div>
+      </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_strict_boundary">严格边界</label>
+        <div>
+          <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> 严格禁止超出 projectPath</label>
+        </div>
+      </div>
+
+      <div class="text-[12px] font-semibold mt-4 mb-2" data-i18n="deny_bash">Bash 命令限制</div>
+
+      <div class="row">
+        <label data-i18n="deny_bash_presets">危险命令预设</label>
+        <div class="grid grid-cols-2 gap-2 text-[12px]">
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_rm_rf">防 rm -rf 类</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_curl_sh">防 curl | sh 远程执行</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_sudo">防 sudo 提权</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_git_push_force">防 git push --force</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_npm_publish">防 npm publish</span></label>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_git">Git</label>
+        <div class="grid grid-cols-2 gap-2 text-[12px]">
+          <label class="flex items-center gap-1.5"><input type="checkbox"/> <span data-i18n="deny_git_commit">禁 git commit</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_git_push">禁 git push(默认 on)</span></label>
+        </div>
+      </div>
+
+      <div class="expert-only">
+        <div class="row">
+          <label data-i18n="deny_custom_rules">自定义规则</label>
+          <div>
+            <textarea rows="3" placeholder="例:&#10;Bash(rm:*)&#10;Write(/etc/*)" class="w-full px-3 py-2 rounded mono text-[12px]"></textarea>
+            <p class="text-dim text-[11px] mt-1">Claude Code permission rule 语法</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- Footer -->
+<footer class="border-t-1 surface mt-8">
+  <div class="max-w-[1100px] mx-auto px-6 py-4 flex items-center text-[11px] text-dim gap-4 flex-wrap">
+    <span>Powered by <a href="https://github.com/oh-summy" target="_blank" class="hover:underline" style="color:var(--accent)">@oh-summy</a></span>
+    <span>·</span>
+    <a href="https://github.com/oh-summy/Loop-Cockpit" target="_blank" class="hover:underline">GitHub</a>
+    <a href="https://github.com/oh-summy/Loop-Cockpit/issues" target="_blank" class="hover:underline">Issues</a>
+    <span class="ml-auto">MIT · Local-first · No cloud</span>
+  </div>
+</footer>
+
+<script>
+// ============ Theme ============
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-icon');
+const themeLabel = document.getElementById('theme-label');
+function applyTheme(t) {
+  if (t === 'dark') document.documentElement.classList.add('dark');
+  else document.documentElement.classList.remove('dark');
+  themeIcon.textContent = t === 'dark' ? '🌙' : '☀️';
+  localStorage.setItem('lc-theme', t);
+  // i18n 会处理 themeLabel
+}
+themeToggle.onclick = () => {
+  applyTheme((localStorage.getItem('lc-theme')||'dark')==='dark'?'light':'dark');
+  applyLang(currentLang);  // 重新翻译以更新 theme label
+};
+applyTheme(localStorage.getItem('lc-theme') || 'dark');
+
+// ============ i18n ============
+const I18N = {
+  zh: {
+    nav_dashboard: '首页', nav_blueprints: 'Loop 列表', nav_runs: '运行记录',
+    theme_dark: '暗色', theme_light: '亮色',
+    mode_simple: '简单模式', mode_expert: '专家模式',
+    btn_cancel: '取消', btn_save: '保存', btn_save_run: '保存并运行',
+    btn_add: '添加', btn_remove: '移除', btn_browse: '📁 浏览', btn_dry_run: '试跑',
+    bp_title_create: '创建 Loop', bp_title_edit: '编辑 Loop',
+    bp_hint_simple: '简单模式:触发 + 核心 + 生命周期 + 反馈 + 重试 + 边界',
+    bp_hint_expert: '专家模式:8 层架构完整暴露 + Planner / Context Builder / Verification / Memory / Reflection / Human Gate',
+    bp_type_label: '类型', bp_template_label: '模板',
+    bp_template_builtin: '系统内置(基础版)', bp_template_blank: '+ 空白',
+    bp_save_as_template: '💾 另存为我的模板',
+    type_bug: '🐛 Bug 修复', type_refactor: '🔧 重构', type_test: '🧪 测试',
+    type_docs: '📝 文档', type_check: '🔍 定期检查', type_other: '⚙️ 其他',
+
+    sec_trigger: '触发与边界',
+    sec_trigger_desc: '什么时候启动 · 什么时候结束 · 用哪个 AI',
+    trigger_mode: '触发方式',
+    trigger_manual: '手动', trigger_once: '一次性', trigger_schedule: '定时', trigger_webhook: 'Webhook',
+    trigger_iter_hint: '(Iter 4 上线)',
+    trigger_manual_desc: '仅在 UI 点击「立即运行」时触发一次',
+    trigger_loop_hint: '配合「重试次数 > 0」时仍是 Loop:AI 失败 → 自动 retry → 直到达成',
+    deadline_label: 'Loop 截止', deadline_desc: '可选。超过这个时间 Loop 自动 disable',
+    agent_label: 'AI 引擎', model_local_default: '(本机默认)',
+
+    sec_core: '核心配置',
+    sec_core_desc: '在哪儿工作 · 要达成什么 · 怎么算成功',
+    core_path: '项目路径', core_path_desc: 'Loop 工作目录,cwd + 文件读写边界基线',
+    core_objective: '目标', core_objective_placeholder: '例:修复 Issue #123 / 让 main 分支保持健康 / 整理今早邮件',
+    core_objective_desc: '主目标,自然语言。也用作 Loop 显示名',
+    core_success: '成功标准', core_success_desc: '客观可量化判定,机器可执行 shell 命令',
+    core_constraints: '约束', core_constraints_desc: '硬约束,每条 1 行(例:不能改 API)',
+
+    sec_lifecycle: '生命周期(感知-决策-行动-反馈)',
+    sec_lifecycle_desc: 'AI 每轮怎么思考 · 用什么工具 · 怎么验证',
+    tool_pool_hint: '简单模式:一锅烩注入;专家模式:Context Builder 按需挑',
+    tool_skills: 'Skills', tool_skills_scanned: '已扫描 12 个用户级 + 2 个项目级 skill',
+    tool_add_skill: '添加 skill',
+    tool_tools: '内建工具',
+    tool_mcp: 'MCP', tool_add_mcp: '添加 MCP',
+    tool_subagent: 'Subagent', tool_add_subagent: '添加 Subagent',
+    tool_permission: '权限模式',
+    perm_plan: 'plan(只读分析)', perm_accept_edits: 'acceptEdits(允许改文件)',
+    perm_bypass: 'bypassPermissions(无人值守)', perm_interactive: 'interactive(每次确认)',
+    sys_prompt: '系统提示词', sys_prompt_placeholder: '留空使用默认模板',
+    none: '暂无',
+
+    sec_planner: 'Planner · 规划器', planner_enable: '启用 Planner',
+    sec_planner_desc: '每轮 Loop 调一次 LLM 出任务列表 + 优先级',
+    planner_replan: '每轮重新规划', planner_max_tasks: '最多任务/轮',
+
+    // SDAF 4 模块(专家模式)
+    sdaf_title: '专家模式:感知-决策-行动-反馈 4 阶段',
+    sdaf_intro: '每阶段独立配 Skills + 提示词 + 工具。Loop 流程:感知→决策→行动→反馈',
+    sdaf_sense: '感知', sdaf_sense_desc: '读仓库/文档/环境,收集上下文',
+    sdaf_decide: '决策', sdaf_decide_desc: 'Planner 出任务列表,定优先级',
+    sdaf_act: '行动', sdaf_act_desc: 'Worker 实际执行任务(写代码/跑命令)',
+    sdaf_feedback: '反馈', sdaf_feedback_desc: 'Verification + 通知 + Reflection',
+    sdaf_prompt: '提示词', sdaf_prompt_desc: '该阶段给 AI 的 system prompt 增量',
+    sdaf_sense_skills: '感知 Skills', sdaf_sense_skills_desc: '只在感知阶段暴露这些 skills',
+    sdaf_sense_tools: '感知 Tools',
+    sdaf_decide_model: '决策 Model', sdaf_decide_model_desc: '思考用强 model,执行用便宜 model',
+    sdaf_decide_replan: '重新决策',
+    sdaf_act_skills: '行动 Skills', sdaf_act_skills_desc: '行动阶段可用的 skills',
+    sdaf_act_tools: '行动 Tools',
+    sdaf_feedback_notify: '反馈到通知',
+    sdaf_feedback_notify_desc: '行动阶段每完成一个任务,推送通知(详见块 4)',
+
+    // 通知事件(块 4)
+    notify_on_progress_title: '进度通知(SDAF 阶段)',
+    notify_on_progress_desc: '每个 SDAF 阶段完成时分别推送通知(默认:行动 + 反馈)',
+    sdaf_sense_notify: '感知完成通知',
+    sdaf_decide_notify: '决策完成通知',
+    sdaf_act_notify: '行动完成通知(每任务)',
+    sdaf_feedback_notify_check: '反馈完成通知',
+    deny_add: '添加文件/文件夹',
+    sec_context: 'Context Builder ★', context_mode_all: 'all - 全部一次给(默认)',
+    context_mode_rule: 'rule-based - 规则映射', context_mode_llm: 'llm-select - LLM 智能选',
+    sec_context_desc: '按任务 priority/type 挑 Memory + Skill + Tool 子集。不一锅烩',
+    sec_verification: 'Verification · 验证器',
+    sec_verification_desc: '多 evaluator 组合判定。Iter 2 仅 shell-only',
+
+    sec_notification: '反馈通知',
+    sec_notification_desc: '通知谁 · 通过什么渠道 · 通知什么事件',
+    notify_on: '通知事件', notify_channels: '通知渠道', notify_template: '通知模板',
+    notify_on_success: 'Loop 成功', notify_on_failure: 'Loop 失败',
+    notify_on_human: '需人审', notify_on_budget: '撞预算警告', notify_on_progress: '进度通知',
+    ch_desktop: '🖥 桌面通知', ch_browser: '🌐 浏览器通知', ch_email: '📧 邮件',
+    ch_lark: '💬 飞书', ch_slack: '💬 Slack', ch_discord: '💬 Discord', ch_telegram: '💬 Telegram',
+    ch_skill: '🔧 自定义 Skill', ch_cli: '🔧 自定义 CLI',
+
+    sec_retry: '失败重试',
+    sec_retry_desc: '失败几次后放弃 · 是否升级 model · 超时',
+    retry_max: '最多重试次数', retry_max_desc: '0 = 不重试',
+    retry_timeout: '单次超时', retry_timeout_desc: '超时被 SIGKILL,防卡死',
+    retry_on_fail: '彻底失败时', retry_on_notify: '通知', retry_on_stop: '停止', retry_on_escalate: '升级 model 重试',
+    sec_reflection: 'Reflection · 反思',
+    sec_reflection_desc: '基于 Reflexion 论文:LLM 反思 → 改方案 → 针对性重试',
+    reflection_enable: '启用反思', reflection_escalate: 'N 次失败后升级',
+    reflection_escalate_model: '升级到 Opus',
+
+    sec_deny: '禁止边界',
+    sec_deny_desc: 'Token / 花费上限 · 禁止编辑哪些文件 · 禁止命令',
+    deny_budget: '预算上限',
+    deny_budget_rounds: '总 Round 上限', deny_budget_tokens: 'Token 上限($)',
+    deny_budget_time: 'Wall time 上限', deny_budget_warn: '警告阈值 %',
+    deny_files: '文件保护',
+    deny_edit_paths: '禁止编辑', deny_edit_placeholder: '例:package.json, LICENSE, .env*(逗号分隔 glob)',
+    deny_delete_paths: '禁止删除', deny_strict_boundary: '严格边界',
+    deny_bash: 'Bash 命令限制', deny_bash_presets: '危险命令预设',
+    deny_rm_rf: '防 rm -rf 类', deny_curl_sh: '防 curl | sh 远程执行',
+    deny_sudo: '防 sudo 提权', deny_git_push_force: '防 git push --force',
+    deny_npm_publish: '防 npm publish', deny_git_commit: '禁 git commit',
+    deny_custom_rules: '自定义规则',
+    deny_git: 'Git', deny_git_push: '禁止 git push(默认 on)',
+  },
+  en: {
+    nav_dashboard: 'Dashboard', nav_blueprints: 'Blueprints', nav_runs: 'Runs',
+    theme_dark: 'Dark', theme_light: 'Light',
+    mode_simple: 'Simple', mode_expert: 'Expert',
+    btn_cancel: 'Cancel', btn_save: 'Save', btn_save_run: 'Save & Run',
+    btn_add: 'Add', btn_remove: 'Remove', btn_browse: '📁 Browse', btn_dry_run: 'Dry run',
+    bp_title_create: 'Create Blueprint', bp_title_edit: 'Edit Blueprint',
+    bp_hint_simple: 'Simple: Trigger + Core + Lifecycle + Notification + Retry + Deny',
+    bp_hint_expert: 'Expert: Full 8-layer + Planner / Context Builder / Verification / Memory / Reflection / Human Gate',
+    bp_type_label: 'Type', bp_template_label: 'Template',
+    bp_template_builtin: 'Built-in (Basic)', bp_template_blank: '+ Blank',
+    bp_save_as_template: '💾 Save as my template',
+    type_bug: '🐛 Bug fix', type_refactor: '🔧 Refactor', type_test: '🧪 Test',
+    type_docs: '📝 Docs', type_check: '🔍 Periodic check', type_other: '⚙️ Other',
+
+    sec_trigger: 'Trigger & Boundary',
+    sec_trigger_desc: 'When to start · When to end · Which AI',
+    trigger_mode: 'Trigger Mode',
+    trigger_manual: 'Manual', trigger_once: 'Once', trigger_schedule: 'Schedule', trigger_webhook: 'Webhook',
+    trigger_iter_hint: '(Iter 4)',
+    trigger_manual_desc: 'Only triggered by clicking "Run now"',
+    trigger_loop_hint: 'With "max retries > 0" it\'s still a Loop: AI fails → auto retry → until success',
+    deadline_label: 'Deadline', deadline_desc: 'Optional. Loop auto-disables after this time',
+    agent_label: 'Agent', model_local_default: '(local default)',
+
+    sec_core: 'Core',
+    sec_core_desc: 'Where · What · How to verify',
+    core_path: 'Project Path', core_path_desc: 'Working directory · cwd + file boundary base',
+    core_objective: 'Objective', core_objective_placeholder: 'e.g. Fix Issue #123 / Keep main green / Triage morning email',
+    core_objective_desc: 'Primary objective in natural language. Also used as Loop display name',
+    core_success: 'Success Condition', core_success_desc: 'Objective measurable check — must be machine-executable shell command',
+    core_constraints: 'Constraints', core_constraints_desc: 'Hard constraints, one per line (e.g. "Cannot modify API")',
+
+    sec_lifecycle: 'Lifecycle (Sense-Decide-Act-Feedback)',
+    sec_lifecycle_desc: 'How AI thinks each round · which tools · how to verify',
+    tool_pool_hint: 'Simple: all injected; Expert: Context Builder picks per task',
+    tool_skills: 'Skills', tool_skills_scanned: 'Scanned 12 user-level + 2 project-level skills',
+    tool_add_skill: 'Add skill',
+    tool_tools: 'Built-in Tools',
+    tool_mcp: 'MCP', tool_add_mcp: 'Add MCP',
+    tool_subagent: 'Subagent', tool_add_subagent: 'Add Subagent',
+    tool_permission: 'Permission Mode',
+    perm_plan: 'plan (read-only)', perm_accept_edits: 'acceptEdits (file edits)',
+    perm_bypass: 'bypassPermissions (unattended)', perm_interactive: 'interactive (confirm each)',
+    sys_prompt: 'System Prompt', sys_prompt_placeholder: 'Leave blank to use default',
+    none: 'None',
+
+    // SDAF 4 modules (Expert mode)
+    sdaf_title: 'Expert: Sense-Decide-Act-Feedback (4 phases)',
+    sdaf_intro: 'Each phase has independent Skills + prompt + tools. Flow: Sense → Decide → Act → Feedback',
+    sdaf_sense: 'Sense', sdaf_sense_desc: 'Read repo/docs/environment, collect context',
+    sdaf_decide: 'Decide', sdaf_decide_desc: 'Planner generates task list, sets priorities',
+    sdaf_act: 'Act', sdaf_act_desc: 'Worker executes tasks (write code, run commands)',
+    sdaf_feedback: 'Feedback', sdaf_feedback_desc: 'Verification + Notification + Reflection',
+    sdaf_prompt: 'Prompt', sdaf_prompt_desc: 'System prompt additions for this phase',
+    sdaf_sense_skills: 'Sense Skills', sdaf_sense_skills_desc: 'Only expose these skills during Sense',
+    sdaf_sense_tools: 'Sense Tools',
+    sdaf_decide_model: 'Decide Model', sdaf_decide_model_desc: 'Strong model for thinking, cheap for execution',
+    sdaf_decide_replan: 'Replan',
+    sdaf_act_skills: 'Act Skills', sdaf_act_skills_desc: 'Skills available during Act phase',
+    sdaf_act_tools: 'Act Tools',
+    sdaf_feedback_notify: 'Notify on feedback',
+    sdaf_feedback_notify_desc: 'Push notification on each task completion during Act',
+
+    sec_notification: 'Notification',
+    sec_notification_desc: 'Who · Via what · What events',
+    notify_on: 'Notify on', notify_channels: 'Channels', notify_template: 'Template',
+    notify_on_success: 'Loop success', notify_on_failure: 'Loop failure',
+    notify_on_human: 'Needs human review', notify_on_budget: 'Budget warning',
+    notify_on_progress_title: 'Progress (SDAF stage)',
+    notify_on_progress_desc: 'Push per SDAF stage (default: Act + Feedback)',
+    sdaf_sense_notify: 'Sense complete',
+    sdaf_decide_notify: 'Decide complete',
+    sdaf_act_notify: 'Act complete (per task)',
+    sdaf_feedback_notify_check: 'Feedback complete',
+    notify_on_progress: 'Progress',
+    ch_desktop: '🖥 Desktop', ch_browser: '🌐 Browser', ch_email: '📧 Email',
+    ch_lark: '💬 Lark', ch_slack: '💬 Slack', ch_discord: '💬 Discord', ch_telegram: '💬 Telegram',
+    ch_skill: '🔧 Custom Skill', ch_cli: '🔧 Custom CLI',
+
+    sec_retry: 'Retry & Recovery',
+    sec_retry_desc: 'How many retries · Escalate model · Timeout',
+    retry_max: 'Max retries', retry_max_desc: '0 = no retry',
+    retry_timeout: 'Timeout', retry_timeout_desc: 'SIGKILL on timeout to prevent stuck',
+    retry_on_fail: 'On fail', retry_on_notify: 'Notify', retry_on_stop: 'Stop', retry_on_escalate: 'Escalate model',
+    sec_reflection: 'Reflection',
+    sec_reflection_desc: 'Reflexion paper-based: LLM reflects → adjusts plan → targeted retry',
+    reflection_enable: 'Enable Reflection', reflection_escalate: 'Escalate after N failures',
+    reflection_escalate_model: 'Escalate to Opus',
+
+    sec_deny: 'Deny & Boundary',
+    sec_deny_desc: 'Token/cost limits · File restrictions · Dangerous commands',
+    deny_budget: 'Budget Limits',
+    deny_budget_rounds: 'Max Rounds', deny_budget_tokens: 'Max Tokens ($)',
+    deny_budget_time: 'Max Wall Time', deny_budget_warn: 'Warn at %',
+    deny_files: 'File Protection',
+    deny_edit_paths: 'Disallow Edit', deny_edit_placeholder: 'e.g. package.json, LICENSE, .env* (comma-separated glob)',
+    deny_delete_paths: 'Disallow Delete', deny_strict_boundary: 'Strict boundary',
+    deny_bash: 'Bash Restrictions', deny_bash_presets: 'Dangerous command presets',
+    deny_rm_rf: 'Prevent rm -rf', deny_curl_sh: 'Prevent curl | sh',
+    deny_sudo: 'Prevent sudo', deny_git_push_force: 'Prevent git push --force',
+    deny_npm_publish: 'Prevent npm publish', deny_git_commit: 'Prevent git commit',
+    deny_custom_rules: 'Custom Rules',
+    deny_git: 'Git', deny_git_push: 'Prevent git push (default on)',
+    deny_add: 'Add path',
+  }
+};
+
+let currentLang = localStorage.getItem('lc-lang') || 'zh';
+const langToggle = document.getElementById('lang-toggle');
+const langLabel = document.getElementById('lang-label');
+
+function applyLang(lang) {
+  currentLang = lang;
+  langLabel.textContent = lang === 'zh' ? '中' : 'EN';
+  localStorage.setItem('lc-lang', lang);
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  const d = I18N[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.dataset.i18n;
+    if (d[k]) el.textContent = d[k];
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const k = el.dataset.i18nPlaceholder;
+    if (d[k]) el.placeholder = d[k];
+  });
+  // mode hint 动态
+  const hintEl = document.getElementById('mode-hint');
+  const isExpert = document.body.classList.contains('expert-mode');
+  hintEl.textContent = isExpert ? d.bp_hint_expert : d.bp_hint_simple;
+}
+langToggle.onclick = () => applyLang(currentLang === 'zh' ? 'en' : 'zh');
+applyLang(currentLang);
+
+// ============ Mode toggle (简单/专家) ============
+const modeButtons = document.querySelectorAll('.mode-toggle');
+function applyMode(mode) {
+  modeButtons.forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+    if (b.classList.contains('active')) {
+      b.style.background = 'var(--accent)';
+      b.style.color = '#fff';
+    } else {
+      b.style.background = '';
+      b.style.color = '';
+    }
+  });
+  document.body.classList.toggle('expert-mode', mode === 'expert');
+  localStorage.setItem('lc-blueprint-mode', mode);
+  applyLang(currentLang);  // 更新 mode-hint
+}
+modeButtons.forEach(b => b.onclick = () => applyMode(b.dataset.mode));
+applyMode(localStorage.getItem('lc-blueprint-mode') || 'simple');
+
+// ============ Block collapse ============
+function toggleBlock(headerEl) {
+  headerEl.parentElement.classList.toggle('collapsed');
+}
+window.toggleBlock = toggleBlock;
+
+// ============ Trigger 切换 ============
+const triggerPanels = {
+  manual:   document.getElementById('trigger-panel-manual'),
+  once:     document.getElementById('trigger-panel-once'),
+  schedule: document.getElementById('trigger-panel-schedule'),
+};
+function selectTriggerMode(mode) {
+  document.querySelectorAll('.trigger-mode').forEach(b => {
+    if (b.classList.contains('active') && b.dataset.mode !== mode) {
+      b.classList.remove('active');
+      b.style.background = '';
+      b.style.color = '';
+    } else if (b.dataset.mode === mode && !b.classList.contains('active')) {
+      b.classList.add('active');
+      b.style.background = 'var(--accent)';
+      b.style.color = '#fff';
+    }
+  });
+  Object.entries(triggerPanels).forEach(([k, el]) => {
+    if (el) el.classList.toggle('hidden', k !== mode);
+  });
+}
+document.querySelectorAll('.trigger-mode').forEach(b => {
+  b.addEventListener('click', () => { if (b.disabled) return; selectTriggerMode(b.dataset.mode); });
+});
+selectTriggerMode('manual');
+
+// Once 快捷按钮
+function pad2(n) { return String(n).padStart(2, '0'); }
+function setOnceDT(d) {
+  const v = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  document.getElementById('once-datetime').value = v;
+}
+document.querySelector('[data-action="once-soonest"]')?.addEventListener('click', () => {
+  const d = new Date(); d.setHours(d.getHours()+1, 0, 0, 0); setOnceDT(d);
+});
+document.querySelector('[data-action="once-tomorrow"]')?.addEventListener('click', () => {
+  const d = new Date(); d.setDate(d.getDate()+1); d.setHours(9, 0, 0, 0); setOnceDT(d);
+});
+
+// ============ Schedule 子模式切换 ============
+function selectSchedTab(sched) {
+  document.querySelectorAll('.sched-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.sched === sched);
+    if (b.classList.contains('active')) {
+      b.style.background = 'var(--accent)';
+      b.style.color = '#fff';
+    } else {
+      b.style.background = '';
+      b.style.color = '';
+    }
+  });
+  document.querySelectorAll('[data-sched-panel]').forEach(p => p.classList.add('hidden'));
+  document.querySelector(`[data-sched-panel="${sched}"]`)?.classList.remove('hidden');
+}
+document.querySelectorAll('.sched-tab').forEach(b => {
+  b.addEventListener('click', () => selectSchedTab(b.dataset.sched));
+});
+selectSchedTab('daily');
+
+// Time stepper +/- 按钮
+document.querySelectorAll('.time-stepper').forEach(picker => {
+  const th = picker.querySelector('.th');
+  const tm = picker.querySelector('.tm');
+  picker.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const step = btn.dataset.step;
+      const dir = +btn.dataset.dir;
+      if (step === 'h') {
+        let h = (parseInt(th.value) || 0) + dir;
+        if (h < 0) h = 23; if (h > 23) h = 0;
+        th.value = pad2(h);
+      } else {
+        let m = (parseInt(tm.value) || 0) + dir * 10;
+        if (m < 0) m = 50; if (m >= 60) m = 0;
+        tm.value = pad2(m);
+      }
+    });
+  });
+  [th, tm].forEach(inp => {
+    inp.addEventListener('blur', () => {
+      let v = parseInt(inp.value); if (isNaN(v)) v = 0;
+      const max = inp.classList.contains('th') ? 23 : 59;
+      v = Math.max(0, Math.min(max, v));
+      inp.value = pad2(v);
+    });
+  });
+});
+
+function getTime(picker) {
+  return `${picker.querySelector('.th').value}:${picker.querySelector('.tm').value}`;
+}
+
+const selectedTimes = { daily: ['09:00'], weekly: ['09:00'], monthly: ['09:00'] };
+function renderTimeChips(scope) {
+  const c = document.querySelector(`[data-time-list="${scope}"]`);
+  if (!c) return;
+  c.innerHTML = '';
+  selectedTimes[scope].sort().forEach(t => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${t} <span class="x" data-time-remove="${scope}:${t}">×</span>`;
+    c.appendChild(chip);
+  });
+  c.querySelectorAll('[data-time-remove]').forEach(x => {
+    x.addEventListener('click', () => {
+      const [s, t] = x.dataset.timeRemove.split(':');
+      selectedTimes[s] = selectedTimes[s].filter(v => v !== t);
+      renderTimeChips(s);
+    });
+  });
+}
+['daily', 'weekly', 'monthly'].forEach(renderTimeChips);
+
+document.querySelectorAll('[data-action="add-time"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const scope = btn.dataset.target;
+    const picker = document.querySelector(`[data-time-picker="${scope}"]`);
+    if (!picker) return;
+    const t = getTime(picker);
+    if (!selectedTimes[scope].includes(t)) {
+      selectedTimes[scope].push(t);
+      renderTimeChips(scope);
+    }
+  });
+});
+
+document.querySelectorAll('[data-quick]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const scope = btn.dataset.quick;
+    const t = btn.dataset.time;
+    if (!selectedTimes[scope].includes(t)) {
+      selectedTimes[scope].push(t);
+      renderTimeChips(scope);
+    }
+  });
+});
+
+// Week days 多选
+const weekDays = [['一', 1], ['二', 2], ['三', 3], ['四', 4], ['五', 5], ['六', 6], ['日', 0]];
+const selectedWeekDays = [1, 2, 3, 4, 5];
+function renderWeekDays() {
+  const c = document.querySelector('[data-week-days]');
+  if (!c) return;
+  c.innerHTML = '';
+  weekDays.forEach(([label, n]) => {
+    const b = document.createElement('button');
+    b.className = 'day-btn' + (selectedWeekDays.includes(n) ? ' active' : '');
+    b.textContent = '周' + label;
+    b.style.padding = '6px 12px';
+    b.addEventListener('click', () => {
+      if (selectedWeekDays.includes(n)) selectedWeekDays.splice(selectedWeekDays.indexOf(n), 1);
+      else selectedWeekDays.push(n);
+      renderWeekDays();
+    });
+    c.appendChild(b);
+  });
+}
+renderWeekDays();
+
+document.querySelectorAll('[data-combo]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const c = btn.dataset.combo;
+    const map = {
+      'weekday-9': { days: [1,2,3,4,5], t: '09:00' },
+      'weekday-12': { days: [1,2,3,4,5], t: '12:00' },
+      'mon-0': { days: [1], t: '00:00' },
+      'weekend-10': { days: [0,6], t: '10:00' },
+    };
+    const cfg = map[c];
+    if (!cfg) return;
+    selectedWeekDays.length = 0;
+    cfg.days.forEach(d => selectedWeekDays.push(d));
+    selectedTimes.weekly = [cfg.t];
+    renderWeekDays();
+    renderTimeChips('weekly');
+  });
+});
+
+// Month days 1-31 多选
+const selectedMonthDays = [1];
+function renderMonthDays() {
+  const c = document.querySelector('[data-month-days]');
+  if (!c) return;
+  c.innerHTML = '';
+  for (let d = 1; d <= 31; d++) {
+    const b = document.createElement('button');
+    b.className = 'day-btn' + (selectedMonthDays.includes(d) ? ' active' : '') + (d > 28 ? ' warn' : '');
+    b.textContent = d;
+    if (d > 28) b.title = d === 31 ? '部分月份无 31 号,会跳过' : d === 30 ? '2 月无 30 号' : '2 月仅闰年有 29 号';
+    b.addEventListener('click', () => {
+      if (selectedMonthDays.includes(d)) selectedMonthDays.splice(selectedMonthDays.indexOf(d), 1);
+      else selectedMonthDays.push(d);
+      renderMonthDays();
+    });
+    c.appendChild(b);
+  }
+}
+renderMonthDays();
+
+// ============ Constraints 增删 ============
+document.querySelector('[data-action="add-constraint"]')?.addEventListener('click', () => {
+  const list = document.getElementById('constraints-list');
+  const row = document.createElement('div');
+  row.className = 'flex gap-2 constraint-row';
+  row.innerHTML = `<input type="text" placeholder="" class="flex-1 px-3 py-1.5 rounded"/>
+    <button class="btn xsmall danger" data-action="remove-constraint">移除</button>`;
+  list.appendChild(row);
+  bindConstraintRemove();
+  row.querySelector('input').focus();
+});
+function bindConstraintRemove() {
+  document.querySelectorAll('[data-action="remove-constraint"]').forEach(b => {
+    b.onclick = (e) => e.target.closest('.constraint-row').remove();
+  });
+}
+bindConstraintRemove();
+
+// ============ Deny 文件/文件夹多条记录 ============
+function bindDenyRemove() {
+  document.querySelectorAll('[data-action="remove-deny"]').forEach(b => {
+    b.onclick = (e) => e.target.closest('.deny-row').remove();
+  });
+}
+document.querySelector('[data-action="add-deny-edit"]')?.addEventListener('click', () => {
+  const list = document.getElementById('deny-edit-list');
+  const row = document.createElement('div');
+  row.className = 'flex gap-2 deny-row';
+  row.innerHTML = '<input type="text" placeholder="例:package.json" class="flex-1 px-3 py-1.5 rounded mono"/>' +
+    '<button class="btn xsmall danger" data-action="remove-deny">移除</button>';
+  list.appendChild(row);
+  bindDenyRemove();
+  row.querySelector('input').focus();
+});
+document.querySelector('[data-action="add-deny-delete"]')?.addEventListener('click', () => {
+  const list = document.getElementById('deny-delete-list');
+  const row = document.createElement('div');
+  row.className = 'flex gap-2 deny-row';
+  row.innerHTML = '<input type="text" placeholder="例:**/*.test.ts" class="flex-1 px-3 py-1.5 rounded mono"/>' +
+    '<button class="btn xsmall danger" data-action="remove-deny">移除</button>';
+  list.appendChild(row);
+  bindDenyRemove();
+  row.querySelector('input').focus();
+});
+
+// ============ Skills 增删 ============
+function bindSkillRemove() {
+  document.querySelectorAll('[data-action="remove-skill"]').forEach(x => {
+    x.onclick = () => x.closest('.chip').remove();
+  });
+}
+bindSkillRemove();
+document.querySelector('[data-action="add-skill"]')?.addEventListener('click', () => {
+  const c = document.getElementById('skills-chips');
+  // 模拟弹窗:从已扫的 12+2 skill 随机选一个
+  const allSkills = ['code-review', 'executing-plans', 'test-driven-development', 'writing-plans', 'brainstorming', 'systematic-debugging', 'verification-before-completion', 'using-git-worktrees', 'receiving-code-review', 'finishing-a-development-branch', 'requesting-code-review'];
+  const current = Array.from(c.querySelectorAll('.chip')).map(x => x.textContent.replace('×', '').trim());
+  const avail = allSkills.filter(s => !current.includes(s));
+  if (!avail.length) { alert('已添加所有可用 skill'); return; }
+  const choice = prompt('从已扫描 skill 中选(逗号分隔):\n' + avail.slice(0, 5).join('\n'), avail[0]);
+  if (!choice) return;
+  const name = choice.trim();
+  if (!avail.includes(name)) { alert('skill 不在已扫描列表: ' + name); return; }
+  const chip = document.createElement('span');
+  chip.className = 'chip';
+  chip.innerHTML = `${name} <span class="x" data-action="remove-skill">×</span>`;
+  c.appendChild(chip);
+  bindSkillRemove();
+});
+
+// ============ MCP 增删 ============
+function renderMCPs() {
+  const list = document.getElementById('mcp-list');
+  if (!list) return;
+  const data = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
+  list.innerHTML = '';
+  if (!data.length) {
+    list.innerHTML = '<div class="text-dim text-[11px]">暂无</div>';
+    return;
+  }
+  data.forEach((m, i) => {
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 items-center surface-2 border-1 rounded p-2';
+    row.innerHTML = `<span class="font-medium text-[12px] flex-1">${m.name}</span>
+      <code class="text-[11px] text-dim mono">${m.command}</code>
+      <button class="btn xsmall danger" data-action="remove-mcp" data-idx="${i}">移除</button>`;
+    list.appendChild(row);
+  });
+  document.querySelectorAll('[data-action="remove-mcp"]').forEach(b => {
+    b.onclick = () => {
+      const d = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
+      d.splice(+b.dataset.idx, 1);
+      localStorage.setItem('lc-mcp-list', JSON.stringify(d));
+      renderMCPs();
+    };
+  });
+}
+renderMCPs();
+document.querySelector('[data-action="add-mcp"]')?.addEventListener('click', () => {
+  const name = prompt('MCP server 名称:');
+  if (!name) return;
+  const command = prompt('启动命令(例: npx -y @modelcontextprotocol/server-github):', 'npx -y @modelcontextprotocol/server-xxx');
+  if (!command) return;
+  const d = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
+  d.push({ name, command });
+  localStorage.setItem('lc-mcp-list', JSON.stringify(d));
+  renderMCPs();
+});
+
+// ============ Subagent 增删 ============
+function renderSubagents() {
+  const list = document.getElementById('subagent-list');
+  if (!list) return;
+  const data = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
+  list.innerHTML = '';
+  if (!data.length) {
+    list.innerHTML = '<div class="text-dim text-[11px]">暂无</div>';
+    return;
+  }
+  data.forEach((s, i) => {
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 items-center surface-2 border-1 rounded p-2';
+    row.innerHTML = `<span class="font-medium text-[12px] flex-1">${s.name}</span>
+      <span class="text-[11px] text-dim">tools: ${s.tools}</span>
+      <button class="btn xsmall danger" data-action="remove-subagent" data-idx="${i}">移除</button>`;
+    list.appendChild(row);
+  });
+  document.querySelectorAll('[data-action="remove-subagent"]').forEach(b => {
+    b.onclick = () => {
+      const d = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
+      d.splice(+b.dataset.idx, 1);
+      localStorage.setItem('lc-subagent-list', JSON.stringify(d));
+      renderSubagents();
+    };
+  });
+}
+renderSubagents();
+document.querySelector('[data-action="add-subagent"]')?.addEventListener('click', () => {
+  const name = prompt('Subagent 名称:');
+  if (!name) return;
+  const prompt_text = prompt('Subagent system prompt:', '你专门负责 X 任务,使用工具 Y...');
+  if (prompt_text === null) return;
+  const tools = prompt('可用工具(逗号分隔,空=全部):', 'Bash, Read, Grep');
+  const d = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
+  d.push({ name, prompt: prompt_text, tools });
+  localStorage.setItem('lc-subagent-list', JSON.stringify(d));
+  renderSubagents();
+});
+</script>
+
+</body>
+</html>
