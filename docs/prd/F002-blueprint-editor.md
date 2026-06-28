@@ -122,6 +122,11 @@ export const blueprints = sqliteTable("blueprints", {
   reflectionConfig: text("reflection_config", { mode: "json" }).$type<ReflectionConfig>(),  // Iter 3
   humanGateConfig: text("human_gate_config", { mode: "json" }).$type<HumanGateConfig>(),    // Iter 5
 
+  // ★ v0.5 新增 — 通知配置(块 4 反馈通知)
+  notification: text("notification", { mode: "json" }).$type<NotificationConfig>(),         // Iter 6
+  // ★ v0.5 新增 — 禁止边界(块 6)
+  deny: text("deny", { mode: "json" }).$type<DenyConfig>(),                                  // Iter 2 起部分实施
+
   // 重试策略(简化版,与 goal.budget 互补)
   retryPolicy: text("retry_policy", { mode: "json" }).$type<RetryPolicy>().notNull(),
 
@@ -163,6 +168,54 @@ type VerifConfig = { /* F008 */ };
 type MemoryConfig = { /* F009 */ };
 type ReflectionConfig = { /* F011 */ };
 type HumanGateConfig = { /* F010 */ };
+
+// ─── ★ v0.5 新增 · 通知配置(块 4) ───────────────────────
+interface NotificationConfig {
+  on: {
+    success: boolean;
+    failure: boolean;
+    humanGate: boolean;
+    budgetWarning: boolean;
+    progress: boolean;        // 每 N 轮 / 里程碑
+    progressEveryN?: number;  // 进度通知间隔
+  };
+  channels: {
+    desktop?: boolean;        // 桌面通知(Iter 6)
+    browser?: boolean;        // Web Notification(Iter 6)
+    email?: { to: string; smtpRef?: string };
+    lark?: { webhookUrl: string };
+    slack?: { webhookUrl: string };
+    discord?: { webhookUrl: string };
+    telegram?: { botToken: string; chatId: string };
+    skill?: { name: string; args?: any };  // 用 Skill 发(lark-im 等)
+    cli?: { command: string };             // 自定义 CLI 命令
+  };
+  template?: {
+    titleTemplate?: string;   // "Loop {{loop.objective}} {{event.type}}"
+    bodyTemplate?: string;
+    includeAuditLink?: boolean;
+    includeRunLink?: boolean;
+  };
+}
+
+// ─── ★ v0.5 新增 · 禁止边界(块 6) ───────────────────────
+interface DenyConfig {
+  // 文件层
+  editPaths?: string[];        // glob,例 ["package.json", "LICENSE", ".env*"]
+  deletePaths?: string[];      // glob,例 ["**/*.test.ts"]
+  strictBoundary?: boolean;    // 严格禁止超出 projectPath,default true
+
+  // Bash 命令层
+  bashCommands?: string[];     // 黑名单命令,例 ["rm -rf /", "curl * | sh", "sudo *", "git push --force"]
+  customRules?: string[];      // Claude Code 完整 permission rule,例 ["Bash(rm:*)", "Write(/etc/*)"]
+
+  // Git 操作
+  gitPush?: boolean;           // 禁止 git push,default true(防误推)
+  gitCommit?: boolean;         // 禁止 git commit,default false
+
+  // 预算警告(也在这块 UI,但落到 budget 字段)
+  budgetWarnAtPercent?: number;  // default 80
+}
 
 // ─── 触发器 / 重试 / 其他 ────────────────────────────────────
 type TriggerConfig =
@@ -282,3 +335,4 @@ type Phase = { /* ADR-0009 */ };
 | 2026-06-28 | v0.2 | ★ 加 phases[] / startPhaseId / type[] 字段(ADR-0009) |
 | 2026-06-28 | v0.3 | ★★ Goal 5 字段重构,删 name 字段(ADR-0010 Layer 1) |
 | 2026-06-28 | **v0.4** | ★★★ **全面对齐 ADR-0010 8 层架构**:加 defaultToolLayer / plannerConfig / contextBuilderConfig / verificationConfig / memoryConfig / reflectionConfig / humanGateConfig 字段。UI 区域改为简单/专家双模式。dry-run-trigger API 加 |
+| 2026-06-28 | **v0.5** | ★ **UI 重组为 6 块**(触发与边界 / 核心配置 / 生命周期 / 反馈通知 / 失败重试 / 禁止边界)。新增 schema 字段:`notification`(通知配置,Iter 6 实施)+ `deny`(禁止边界,Iter 2 起部分)。详见 [ui-spec v2](../design/ui-spec/blueprint-editor.md) |
