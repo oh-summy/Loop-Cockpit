@@ -181,7 +181,7 @@
     </nav>
     <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
       <button id="theme-toggle" class="btn ghost xsmall" title="切换暗色/亮色">
-        <span id="theme-icon">☀️</span>
+        <span id="theme-icon">🌙</span>
       </button>
       <button id="lang-toggle" class="btn ghost xsmall" title="切换语言">
         <span id="lang-icon">ZH</span>
@@ -1244,7 +1244,7 @@ const themeIcon = document.getElementById('theme-icon');
 function applyTheme(t) {
   if (t === 'dark') document.documentElement.classList.add('dark');
   else document.documentElement.classList.remove('dark');
-  themeIcon.textContent = t === 'dark' ? '☀️' : '🌙';
+  themeIcon.textContent = t === 'dark' ? '🌙' : '☀️';
   localStorage.setItem('lc-theme', t);
 }
 themeToggle.onclick = () => {
