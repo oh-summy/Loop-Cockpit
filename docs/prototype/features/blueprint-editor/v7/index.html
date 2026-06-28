@@ -184,7 +184,7 @@
         <span id="theme-icon">☀️</span>
       </button>
       <button id="lang-toggle" class="btn ghost xsmall" title="切换语言">
-        <span id="lang-icon">🇨🇳</span>
+        <span id="lang-icon">ZH</span>
       </button>
     </div>
   </div>
@@ -1502,7 +1502,7 @@ const langIcon = document.getElementById('lang-icon');
 
 function applyLang(lang) {
   currentLang = lang;
-  langIcon.textContent = lang === 'zh' ? '🇨🇳' : '🇺🇸';
+  langIcon.textContent = lang === 'zh' ? 'ZH' : 'EN';
   localStorage.setItem('lc-lang', lang);
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   const d = I18N[lang];
