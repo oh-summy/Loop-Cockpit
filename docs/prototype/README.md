@@ -17,9 +17,17 @@
 
 | 原型 | 状态 | 关联 PRD |
 |---|---|---|
-| [blueprint-editor](features/blueprint-editor/) | Exploring (v4) | F002 |
-| [run-detail](features/run-detail/) | Exploring (v1) | F003 + F004 + F005 |
+| [blueprint-editor](features/blueprint-editor/) (v4) | Exploring | F002 |
+| [blueprint-editor v5](features/blueprint-editor/v5/) | ★ Exploring | F002 v0.4(8 层) |
+| [run-detail](features/run-detail/) (v2) | Exploring | F003 + F004 + F005 |
+| [run-detail v3](features/run-detail/v3/) | ★ Exploring | F003 v0.3 + 8 层运行时微缩 |
 | [ux-flow](features/ux-flow/) | Decided | 多个 |
+
+## product/
+
+| 原型 | 状态 | 关联 PRD |
+|---|---|---|
+| [dashboard](features/dashboard/) | ★ Exploring | F002 + F003(总览) |
 
 ## components/
 

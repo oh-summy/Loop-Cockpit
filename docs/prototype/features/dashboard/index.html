@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard · Loop Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  (function(){ const t = localStorage.getItem('lc-theme') || 'dark'; if (t==='dark') document.documentElement.classList.add('dark'); })();
+  tailwind.config = { darkMode: 'class' }
+</script>
+<style>
+  :root {
+    --bg:#fafafa; --surface:#f3f3f4; --surface-2:#ffffff; --border:#e6e6e8; --border-strong:#d4d4d8;
+    --fg:#0a0a0b; --fg-muted:#71717a; --fg-dim:#a1a1aa;
+    --accent:#7c5cff; --accent-soft:rgba(124,92,255,0.10);
+    --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+  }
+  .dark {
+    --bg:#0a0a0b; --surface:#141416; --surface-2:#1c1c20; --border:#202023; --border-strong:#2a2a2e;
+    --fg:#e4e4e7; --fg-muted:#71717a; --fg-dim:#52525b;
+    --accent-soft:rgba(124,92,255,0.15);
+  }
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; font-size: 13px; line-height: 1.5; }
+  .mono { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace; }
+  .surface { background: var(--surface); }
+  .surface-2 { background: var(--surface-2); }
+  .border-1 { border: 1px solid var(--border); }
+  .border-t-1 { border-top: 1px solid var(--border); }
+  .border-b-1 { border-bottom: 1px solid var(--border); }
+  .text-muted { color: var(--fg-muted); }
+  .text-dim { color: var(--fg-dim); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .12s; }
+  .btn:hover { border-color: var(--border-strong); background: var(--surface); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #6d4ce6; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
+  .btn.ghost:hover { background: var(--surface); color: var(--fg); }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn.xsmall { padding: 2px 6px; font-size: 11px; }
+  .btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+
+  .tok { display:inline-flex; align-items:center; padding:1px 6px; border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:500; letter-spacing:0.02em; }
+  .tok-ok { background: rgba(16,185,129,0.15); color: var(--ok); }
+  .tok-warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+  .tok-err { background: rgba(239,68,68,0.15); color: var(--danger); }
+  .tok-accent { background: var(--accent-soft); color: var(--accent); }
+  .tok-running { background: var(--accent-soft); color: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .stat-num { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; }
+  .stat-label { font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .run-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; transition: border-color 0.12s; cursor: pointer; }
+  .run-card:hover { border-color: var(--accent); }
+
+  .phase-mini { display:inline-flex; align-items:center; gap:3px; padding:2px 6px; border-radius:3px; font-size:10px; background: var(--surface-2); border: 1px solid var(--border); font-family:'JetBrains Mono', monospace; }
+  .phase-mini.done { background: rgba(16,185,129,0.08); color: var(--ok); border-color: rgba(16,185,129,0.3); }
+  .phase-mini.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .phase-mini.pending { color: var(--fg-dim); }
+
+  .bp-row { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .bp-row:hover { background: var(--surface); }
+
+  table.runs-table { width: 100%; border-collapse: collapse; }
+  table.runs-table th { text-align: left; padding: 8px 12px; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); font-weight: 600; }
+  table.runs-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  table.runs-table tr:hover td { background: var(--surface); }
+</style>
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<header class="border-b-1 surface" style="position: sticky; top: 0; z-index: 40;">
+  <div class="max-w-[1400px] mx-auto px-6 h-12 flex items-center gap-6">
+    <span class="font-semibold flex items-center gap-1.5 text-[14px]">
+      <span style="color:var(--accent)" class="mono">▸</span>
+      Loop Cockpit
+    </span>
+    <nav class="flex gap-1 text-[12px] text-muted">
+      <a href="#" class="px-2 py-1 rounded surface" style="color:var(--fg)">Dashboard</a>
+      <a href="../blueprint-editor/v5/index.html" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Blueprints</a>
+      <a href="../run-detail/v3/index.html" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Runs</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
+      <button id="lang-toggle" class="btn ghost xsmall">
+        <span>🌐</span><span id="lang-label">中</span>
+      </button>
+      <button id="theme-toggle" class="btn ghost xsmall">
+        <span id="theme-icon">🌙</span><span id="theme-label">dark</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-[1400px] mx-auto px-6 py-8">
+
+  <!-- ===== Top Stats ===== -->
+  <div class="flex items-baseline justify-between mb-6">
+    <h1 class="text-[20px] font-semibold">Dashboard</h1>
+    <a href="../blueprint-editor/v5/index.html" class="btn primary"><span>+</span> Create Blueprint</a>
+  </div>
+
+  <div class="grid grid-cols-4 gap-4 mb-8">
+    <div class="stat-card">
+      <div class="stat-label">Loops 活跃</div>
+      <div class="stat-num mt-1" style="color:var(--accent)">5</div>
+      <div class="text-dim text-[11px] mt-1">+1 本周新增</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Run 在跑</div>
+      <div class="stat-num mt-1" style="color:var(--ok)">2</div>
+      <div class="text-dim text-[11px] mt-1">实时 · WebSocket</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">今日成功</div>
+      <div class="stat-num mt-1">12</div>
+      <div class="text-dim text-[11px] mt-1">成功率 92%</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">告警</div>
+      <div class="stat-num mt-1" style="color:var(--warn)">1</div>
+      <div class="text-dim text-[11px] mt-1">1 Human Gate 待审</div>
+    </div>
+  </div>
+
+  <!-- ===== Live Runs ===== -->
+  <div class="mb-8">
+    <div class="flex items-baseline justify-between mb-3">
+      <h2 class="text-[14px] font-semibold text-muted uppercase tracking-wider">Live Runs · 进行中</h2>
+      <a href="../run-detail/v3/index.html" class="text-[12px] text-muted hover:underline">查看全部 →</a>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+
+      <!-- Run Card 1 -->
+      <div class="run-card" onclick="location.href='../run-detail/v3/index.html'">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="tok tok-running">● running</span>
+            <span class="mono text-[11px] text-dim">r_K8xL2pQm9</span>
+          </div>
+          <button class="btn ghost xsmall danger" onclick="event.stopPropagation()">⏹ Stop</button>
+        </div>
+        <div class="font-medium mb-2">保持 main 分支健康 lint + test + build 全绿</div>
+        <div class="flex items-center gap-1 mb-3 flex-wrap">
+          <span class="phase-mini done">1 ✓ 分析</span>
+          <span class="text-dim">→</span>
+          <span class="phase-mini active">2 ● 计划+开发</span>
+          <span class="text-dim">→</span>
+          <span class="phase-mini pending">3 测试</span>
+          <span class="text-dim">→</span>
+          <span class="phase-mini pending">4 通知</span>
+        </div>
+        <div class="flex items-center gap-3 text-[11px] text-muted mono">
+          <span>elapsed <strong style="color:var(--fg)">02:14</strong></span>
+          <span class="text-dim">·</span>
+          <span>cost <strong style="color:var(--accent)">$0.023</strong>/$1.00</span>
+          <span class="text-dim">·</span>
+          <span>Round <strong style="color:var(--fg)">3/20</strong></span>
+        </div>
+        <div class="mt-2 surface-2 border-1 rounded-full h-1 overflow-hidden">
+          <div style="width:23%;height:100%;background:var(--accent)"></div>
+        </div>
+      </div>
+
+      <!-- Run Card 2 -->
+      <div class="run-card" onclick="location.href='../run-detail/v3/index.html'">
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <span class="tok tok-running">● evaluating</span>
+            <span class="mono text-[11px] text-dim">r_M7xN5sPq2</span>
+          </div>
+          <button class="btn ghost xsmall danger" onclick="event.stopPropagation()">⏹ Stop</button>
+        </div>
+        <div class="font-medium mb-2">整理今早邮件,推荐处理优先级</div>
+        <div class="flex items-center gap-1 mb-3 flex-wrap">
+          <span class="phase-mini done">1 ✓ 收件</span>
+          <span class="text-dim">→</span>
+          <span class="phase-mini done">2 ✓ 分类</span>
+          <span class="text-dim">→</span>
+          <span class="phase-mini active">3 ● 总结</span>
+        </div>
+        <div class="flex items-center gap-3 text-[11px] text-muted mono">
+          <span>elapsed <strong style="color:var(--fg)">01:08</strong></span>
+          <span class="text-dim">·</span>
+          <span>cost <strong style="color:var(--accent)">$0.012</strong>/$0.50</span>
+          <span class="text-dim">·</span>
+          <span>Round <strong style="color:var(--fg)">2/10</strong></span>
+        </div>
+        <div class="mt-2 surface-2 border-1 rounded-full h-1 overflow-hidden">
+          <div style="width:24%;height:100%;background:var(--accent)"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== Pending Human Gates (Iter 5) ===== -->
+  <div class="mb-8">
+    <div class="flex items-baseline justify-between mb-3">
+      <h2 class="text-[14px] font-semibold uppercase tracking-wider" style="color:var(--warn)">Pending Human Gates · 待审</h2>
+      <span class="text-[11px] text-dim">(Iter 5 上线)</span>
+    </div>
+    <div class="surface border-1 rounded-lg">
+      <div class="bp-row">
+        <span class="tok tok-warn">⏸ paused</span>
+        <span class="mono text-[12px]">r_P3qR8tS5wK</span>
+        <span class="text-muted text-[12px]">·</span>
+        <span class="text-[12px]">CI 失败时分析+修+开 PR</span>
+        <span class="text-muted text-[12px]">·</span>
+        <span class="text-[11px] text-dim">触发: on-failure · 模式: default-reject · 还剩 4:23</span>
+        <span class="ml-auto flex items-center gap-2">
+          <button class="btn xsmall" onclick="alert('查看 Run 详情'); location.href='../run-detail/v3/index.html'">查看</button>
+          <button class="btn xsmall primary">✓ 批准</button>
+          <button class="btn xsmall danger">✗ 拒绝</button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Recent Runs ===== -->
+  <div class="mb-8">
+    <div class="flex items-baseline justify-between mb-3">
+      <h2 class="text-[14px] font-semibold text-muted uppercase tracking-wider">Recent Runs · 历史</h2>
+      <div class="flex gap-2 text-[11px]">
+        <button class="btn xsmall" style="background:var(--accent);color:#fff;border-color:var(--accent)">All</button>
+        <button class="btn xsmall">Success</button>
+        <button class="btn xsmall">Failed</button>
+        <button class="btn xsmall">Stopped</button>
+      </div>
+    </div>
+    <div class="surface border-1 rounded-lg overflow-hidden">
+      <table class="runs-table">
+        <thead><tr>
+          <th></th><th>Run ID</th><th>Blueprint</th><th>Trigger</th><th>Cost</th><th>Duration</th><th>时间</th>
+        </tr></thead>
+        <tbody>
+          <tr onclick="location.href='../run-detail/v3/index.html'" class="cursor-pointer">
+            <td><span class="tok tok-ok">✓</span></td>
+            <td class="mono text-[12px]">r_A1bC2dE3fG</td>
+            <td>保持 main 分支健康 · <span class="tok tok-accent">🔍 定期检查</span></td>
+            <td><span class="text-[11px] text-muted">⏰ Cron · 09:00</span></td>
+            <td class="mono">$0.18</td>
+            <td class="mono">03:42</td>
+            <td class="text-dim">2 分钟前</td>
+          </tr>
+          <tr onclick="location.href='../run-detail/v3/index.html'" class="cursor-pointer">
+            <td><span class="tok tok-err">✗</span></td>
+            <td class="mono text-[12px]">r_H4iJ5kL6mN</td>
+            <td>修复 Issue #123 · <span class="tok tok-accent">🐛 Bug 修复</span></td>
+            <td><span class="text-[11px] text-muted">📝 Manual</span></td>
+            <td class="mono" style="color:var(--warn)">$0.42</td>
+            <td class="mono">12:18</td>
+            <td class="text-dim">1 小时前</td>
+          </tr>
+          <tr onclick="location.href='../run-detail/v3/index.html'" class="cursor-pointer">
+            <td><span class="tok tok-ok">✓</span></td>
+            <td class="mono text-[12px]">r_O7pQ8rS9tU</td>
+            <td>本周 commit 摘要 · <span class="tok tok-accent">📝 文档</span></td>
+            <td><span class="text-[11px] text-muted">⏰ Cron · 周日 18:00</span></td>
+            <td class="mono">$0.09</td>
+            <td class="mono">01:32</td>
+            <td class="text-dim">昨天 18:00</td>
+          </tr>
+          <tr onclick="location.href='../run-detail/v3/index.html'" class="cursor-pointer">
+            <td><span class="tok" style="background:rgba(113,113,122,0.2);color:var(--fg-muted)">⏹</span></td>
+            <td class="mono text-[12px]">r_V0wX1yZ2aB</td>
+            <td>测试覆盖率提到 85% · <span class="tok tok-accent">🧪 测试</span></td>
+            <td><span class="text-[11px] text-muted">📝 Manual</span></td>
+            <td class="mono">$0.08</td>
+            <td class="mono">02:11</td>
+            <td class="text-dim">2 天前</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== My Blueprints ===== -->
+  <div class="mb-8">
+    <div class="flex items-baseline justify-between mb-3">
+      <h2 class="text-[14px] font-semibold text-muted uppercase tracking-wider">My Blueprints · 我的 Loop</h2>
+      <a href="../blueprint-editor/v5/index.html" class="btn small primary"><span>+</span> New Blueprint</a>
+    </div>
+    <div class="surface border-1 rounded-lg overflow-hidden">
+
+      <div class="bp-row">
+        <span class="tok tok-accent">🔍 定期检查</span>
+        <span class="font-medium">保持 main 分支健康 lint + test + build 全绿</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">⏰ 每天 09:00</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">上次: <span class="tok tok-ok">✓</span> 2 分钟前</span>
+        <span class="ml-auto flex gap-2">
+          <button class="btn xsmall primary">▶ Run now</button>
+          <button class="btn xsmall">Edit</button>
+          <button class="btn xsmall ghost">⋯</button>
+        </span>
+      </div>
+
+      <div class="bp-row">
+        <span class="tok tok-accent">🐛 Bug 修复</span>
+        <span class="font-medium">修复 Issue #123 — TypeError on initialization</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">📝 Manual</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">上次: <span class="tok tok-err">✗</span> 1 小时前</span>
+        <span class="ml-auto flex gap-2">
+          <button class="btn xsmall primary">▶ Run now</button>
+          <button class="btn xsmall">Edit</button>
+          <button class="btn xsmall ghost">⋯</button>
+        </span>
+      </div>
+
+      <div class="bp-row">
+        <span class="tok tok-accent">📝 文档</span>
+        <span class="font-medium">生成本周 commit 摘要发飞书</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">⏰ 每周日 18:00</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">上次: <span class="tok tok-ok">✓</span> 昨天 18:00</span>
+        <span class="ml-auto flex gap-2">
+          <button class="btn xsmall primary">▶ Run now</button>
+          <button class="btn xsmall">Edit</button>
+          <button class="btn xsmall ghost">⋯</button>
+        </span>
+      </div>
+
+      <div class="bp-row">
+        <span class="tok tok-accent">🧪 测试</span>
+        <span class="font-medium">测试覆盖率提到 85%</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">📝 Manual</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">上次: <span class="tok">⏹</span> 2 天前</span>
+        <span class="ml-auto flex gap-2">
+          <button class="btn xsmall primary">▶ Run now</button>
+          <button class="btn xsmall">Edit</button>
+          <button class="btn xsmall ghost">⋯</button>
+        </span>
+      </div>
+
+      <div class="bp-row">
+        <span class="tok tok-accent">⚙️ 其他</span>
+        <span class="font-medium">整理今早邮件,推荐处理优先级</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">⏰ 每天 09:00</span>
+        <span class="text-dim">·</span>
+        <span class="text-[11px] text-muted">上次: <span class="tok tok-running">● 正在跑</span></span>
+        <span class="ml-auto flex gap-2">
+          <button class="btn xsmall" disabled>Running</button>
+          <button class="btn xsmall">Edit</button>
+          <button class="btn xsmall ghost">⋯</button>
+        </span>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== Footer ===== -->
+<footer class="border-t-1 surface mt-8">
+  <div class="max-w-[1400px] mx-auto px-6 py-4 flex items-center text-[11px] text-dim gap-4 flex-wrap">
+    <span>Powered by <a href="https://github.com/oh-summy" target="_blank" class="hover:underline" style="color:var(--accent)">@oh-summy</a></span>
+    <span>·</span>
+    <a href="https://github.com/oh-summy/Loop-Cockpit" target="_blank" class="hover:underline">GitHub</a>
+    <a href="https://github.com/oh-summy/Loop-Cockpit/issues" target="_blank" class="hover:underline">Issues</a>
+    <span class="ml-auto">MIT · Local-first · No cloud</span>
+  </div>
+</footer>
+
+<script>
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-icon');
+const themeLabel = document.getElementById('theme-label');
+function applyTheme(t) {
+  if (t === 'dark') { document.documentElement.classList.add('dark'); themeIcon.textContent='🌙'; themeLabel.textContent='dark'; }
+  else { document.documentElement.classList.remove('dark'); themeIcon.textContent='☀️'; themeLabel.textContent='light'; }
+  localStorage.setItem('lc-theme', t);
+}
+themeToggle.onclick = () => applyTheme((localStorage.getItem('lc-theme')||'dark')==='dark'?'light':'dark');
+applyTheme(localStorage.getItem('lc-theme') || 'dark');
+
+const langToggle = document.getElementById('lang-toggle');
+const langLabel = document.getElementById('lang-label');
+langToggle.onclick = () => {
+  const cur = localStorage.getItem('lc-lang') || 'zh';
+  const next = cur === 'zh' ? 'en' : 'zh';
+  langLabel.textContent = next === 'zh' ? '中' : 'EN';
+  localStorage.setItem('lc-lang', next);
+};
+langLabel.textContent = (localStorage.getItem('lc-lang') || 'zh') === 'zh' ? '中' : 'EN';
+</script>
+
+</body>
+</html>
