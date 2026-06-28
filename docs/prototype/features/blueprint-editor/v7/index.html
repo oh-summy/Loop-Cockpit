@@ -201,17 +201,17 @@
     <!-- Type + Template -->
     <div class="flex items-center gap-3 pb-3 border-b-1">
       <span class="text-muted text-[12px]" data-i18n="bp_type_label">类型</span>
-      <select class="px-3 py-1.5 rounded">
-        <option data-i18n="type_check">🔍 定期检查</option>
-      <option data-i18n="type_bug">🐛 Bug 修复</option>
-      <option data-i18n="type_refactor">🔧 重构</option>
-      <option data-i18n="type_test">🧪 测试</option>
-      <option data-i18n="type_docs">📝 文档</option>
-      <option data-i18n="type_other">⚙️ 其他</option>
+    <select id="bp-type-select" class="px-3 py-1.5 rounded">
+        <option value="check" data-i18n="type_check">🔍 定期检查</option>
+      <option value="bug" data-i18n="type_bug">🐛 Bug 修复</option>
+      <option value="refactor" data-i18n="type_refactor">🔧 重构</option>
+      <option value="test" data-i18n="type_test">🧪 测试</option>
+      <option value="docs" data-i18n="type_docs">📝 文档</option>
+      <option value="other" data-i18n="type_other">⚙️ 其他</option>
     </select>
     <span class="text-dim">·</span>
     <span class="text-muted text-[12px]" data-i18n="bp_template_label">模板</span>
-    <select class="px-3 py-1.5 rounded">
+    <select id="bp-template-select" class="px-3 py-1.5 rounded">
       <option data-i18n="bp_template_builtin">系统内置(基础版)</option>
       <option data-i18n="bp_template_blank">+ 空白</option>
     </select>
@@ -249,13 +249,14 @@
 
           <!-- Once 面板 -->
           <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-once">
-            <label class="block text-[12px] text-muted mb-1" data-i18n="trigger_once_at">触发时刻</label>
             <div class="flex items-center gap-2 mb-2">
-              <input type="datetime-local" id="once-datetime" class="px-2 py-1.5 rounded"/>
+              <input type="datetime-local" id="once-datetime" class="px-2 py-1.5 rounded flex-1"/>
+            </div>
+            <div class="flex items-center gap-2">
               <button class="btn small" data-action="once-soonest" data-i18n="trigger_once_soonest">下一个整点</button>
               <button class="btn small" data-action="once-tomorrow" data-i18n="trigger_once_tomorrow">明天 09:00</button>
             </div>
-            <p class="text-dim text-[11px]" data-i18n="trigger_once_desc">到点运行一次,完成后 Blueprint 自动 disable</p>
+            <p class="text-dim text-[11px] mt-2" data-i18n="trigger_once_desc">到点运行一次,完成后 Blueprint 自动 disable</p>
           </div>
 
           <!-- Schedule 面板(cron 配置器 4 子模式) -->
@@ -342,10 +343,10 @@
               <p class="text-dim text-[11px] mb-3" data-i18n="sched_interval_hint">从「起始时间」起,每 N 个周期触发一次。</p>
               <div class="flex items-center gap-2 mb-2">
                 <span class="text-dim text-[11px]" data-i18n="sched_every">每隔</span>
-                <div class="stepper">
-                  <button>−</button>
+                <div class="stepper" data-step="1">
+                  <button data-dir="-1">−</button>
                   <input type="text" value="3"/>
-                  <button>+</button>
+                  <button data-dir="+1">+</button>
                 </div>
                 <select class="px-2 py-1 rounded text-[12px]">
                   <option data-i18n="sched_unit_day">天</option>
@@ -867,7 +868,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
           <div class="stepper" data-step="5"><button data-dir="-1">−</button><input value="10"/><button data-dir="+1">+</button></div>
           <select class="px-2 py-1 rounded text-[12px]">
             <option value="min">分钟</option>
-            <option value="hour">小时(0.5 步长)</option>
+            <option value="hour">小时</option>
           </select>
           <span class="text-dim text-[11px]" data-i18n="retry_timeout_desc">超时被 SIGKILL,防卡死</span>
         </div>
@@ -878,7 +879,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
         <div>
           <select class="px-3 py-1.5 rounded">
             <option data-i18n="retry_on_notify">通知</option>
-            <option data-i18n="retry_on_stop">停止</option>
+            <option data-i18n="retry_on_stop" selected>停止</option>
             <option data-i18n="retry_on_escalate">升级 model 重试</option>
           </select>
         </div>
@@ -950,7 +951,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
         <label data-i18n="deny_budget_time">Wall time 上限</label>
         <div class="flex items-center gap-2">
           <div class="stepper" data-step="5"><button data-dir="-1">−</button><input value="10"/><button data-dir="+1">+</button></div>
-          <select class="px-2 py-1 rounded text-[12px]"><option value="min">min</option><option value="hour">hour(0.5 步长)</option></select>
+          <select class="px-2 py-1 rounded text-[12px]"><option value="min">min</option><option value="hour">hour</option></select>
           <span class="text-dim text-[11px]" data-i18n="deny_warn_prefix_time">警告阈值 <input type="text" value="80" class="w-10 px-1 py-0.5 rounded text-center mono" style="font-size:11px"/>%</span>
         </div>
       </div>
@@ -979,7 +980,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
         <label data-i18n="deny_strict_boundary">严格边界</label>
         <div>
           <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="deny_strict_boundary">严格禁止超出 projectPath</span></label>
-          <span class="text-dim text-[10px] mt-0.5 block" data-i18n="deny_strict_tip">通过 --add-dir + cwd 锁 + permission rule 三重约束</span>
+          <span class="tip text-dim text-[10px] mt-0.5" data-tip="通过 --add-dir &lt;projectPath&gt; + cwd 锁 + Claude Code permission rule 三重约束。Agent 的 Edit/Write/Delete 均被限制在此目录下,Read 仍允许。">💡 <span data-i18n="deny_strict_tip">三重约束说明</span></span>
         </div>
       </div>
 
@@ -1000,7 +1001,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
         <label data-i18n="deny_git">Git</label>
         <div class="grid grid-cols-2 gap-2 text-[12px]">
           <label class="flex items-center gap-1.5"><input type="checkbox"/> <span data-i18n="deny_git_commit">禁 git commit</span></label>
-          <label class="flex items-center gap-1.5"><input type="checkbox" checked/> <span data-i18n="deny_git_push">禁 git push(默认 on)</span></label>
+          <label class="flex items-center gap-1.5"><input type="checkbox"/> <span data-i18n="deny_git_push">禁止 git push</span></label>
         </div>
       </div>
 
@@ -1069,6 +1070,8 @@ const I18N = {
     sec_trigger_desc: '什么时候启动 · 什么时候结束 · 用哪个 AI',
     trigger_mode: '触发方式',
     trigger_manual: '手动', trigger_once: '一次性', trigger_schedule: '定时', trigger_webhook: 'Webhook',
+    trigger_once_at: '触发时刻', trigger_once_soonest: '下一个整点', trigger_once_tomorrow: '明天 09:00',
+    trigger_once_desc: '到点运行一次,完成后 Blueprint 自动 disable',
     trigger_iter_hint: '(Iter 4 上线)',
     trigger_manual_desc: '仅在 UI 点击「立即运行」时触发一次',
     trigger_loop_hint: '配合「重试次数 > 0」时仍是 Loop:AI 失败 → 自动 retry → 直到达成',
@@ -1158,7 +1161,7 @@ const I18N = {
     deny_budget_tokens_usd: '花费上限($)',
     deny_budget_time: 'Wall time 上限',
     deny_warn_prefix: '警告阈值', deny_warn_prefix_usd: '警告阈值', deny_warn_prefix_time: '警告阈值',
-    deny_strict_tip: '通过 --add-dir + cwd 锁 + permission rule 三重约束',
+    deny_strict_tip: '三重约束说明',
     deny_files: '文件保护',
     deny_edit_paths: '禁止编辑', deny_edit_placeholder: '例:package.json, LICENSE, .env*(逗号分隔 glob)',
     deny_delete_paths: '禁止删除', deny_strict_boundary: '严格边界',
@@ -1167,7 +1170,7 @@ const I18N = {
     deny_sudo: '防 sudo 提权', deny_git_push_force: '防 git push --force',
     deny_npm_publish: '防 npm publish', deny_git_commit: '禁 git commit',
     deny_custom_rules: '自定义规则',
-    deny_git: 'Git', deny_git_push: '禁止 git push(默认 on)',
+    deny_git: 'Git', deny_git_push: '禁止 git push',
   },
   en: {
     nav_dashboard: 'Dashboard', nav_blueprints: 'Blueprints', nav_runs: 'Runs',
@@ -1188,6 +1191,8 @@ const I18N = {
     sec_trigger_desc: 'When to start · When to end · Which AI',
     trigger_mode: 'Trigger Mode',
     trigger_manual: 'Manual', trigger_once: 'Once', trigger_schedule: 'Schedule', trigger_webhook: 'Webhook',
+    trigger_once_at: 'Trigger at', trigger_once_soonest: 'Next hour', trigger_once_tomorrow: 'Tomorrow 09:00',
+    trigger_once_desc: 'Runs once at the scheduled time, then auto-disable',
     trigger_iter_hint: '(Iter 4)',
     trigger_manual_desc: 'Only triggered by clicking "Run now"',
     trigger_loop_hint: 'With "max retries > 0" it\'s still a Loop: AI fails → auto retry → until success',
@@ -1275,8 +1280,9 @@ const I18N = {
     deny_sudo: 'Prevent sudo', deny_git_push_force: 'Prevent git push --force',
     deny_npm_publish: 'Prevent npm publish', deny_git_commit: 'Prevent git commit',
     deny_custom_rules: 'Custom Rules',
-    deny_git: 'Git', deny_git_push: 'Prevent git push (default on)',
+    deny_git: 'Git', deny_git_push: 'Prevent git push',
     deny_add: 'Add path',
+    deny_strict_tip: 'Triple constraint info',
   }
 };
 
@@ -1325,6 +1331,36 @@ function applyMode(mode) {
 }
 modeButtons.forEach(b => b.onclick = () => applyMode(b.dataset.mode));
 applyMode(localStorage.getItem('lc-blueprint-mode') || 'simple');
+
+// ============ Type → Template 联动 ============
+const TYPE_TEMPLATES = {
+  check: { zh: ['系统内置(基础版)', 'crontab 监控', '健康检查'], en: ['Built-in (Basic)', 'Crontab Monitor', 'Health Check'] },
+  bug: { zh: ['系统内置(基础版)', 'Issue → Fix → Test'], en: ['Built-in (Basic)', 'Issue → Fix → Test'] },
+  refactor: { zh: ['系统内置(基础版)', '重构计划 → 分步执行'], en: ['Built-in (Basic)', 'Refactor Plan → Step-by-step'] },
+  test: { zh: ['系统内置(基础版)', 'TDD 循环'], en: ['Built-in (Basic)', 'TDD Loop'] },
+  docs: { zh: ['系统内置(基础版)', '文档补全'], en: ['Built-in (Basic)', 'Doc Completion'] },
+  other: { zh: ['系统内置(基础版)', '+ 空白'], en: ['Built-in (Basic)', '+ Blank'] },
+};
+
+function updateTemplates() {
+  const typeSel = document.getElementById('bp-type-select');
+  const tplSel = document.getElementById('bp-template-select');
+  if (!typeSel || !tplSel) return;
+  const type = typeSel.value;
+  const tpls = TYPE_TEMPLATES[type]?.[currentLang] || TYPE_TEMPLATES.other[currentLang];
+  tplSel.innerHTML = '';
+  tpls.forEach((t, i) => {
+    const opt = document.createElement('option');
+    opt.textContent = t;
+    if (i === 0) opt.selected = true;
+    tplSel.appendChild(opt);
+  });
+}
+
+const typeSel = document.getElementById('bp-type-select');
+if (typeSel) typeSel.onchange = updateTemplates;
+// 初始化
+updateTemplates();
 
 // ============ Block collapse ============
 function toggleBlock(headerEl) {
@@ -1655,12 +1691,11 @@ initSkills();
 
 document.querySelectorAll('[data-action="add-skill"]').forEach(btn => {
   btn.addEventListener('click', () => {
-    const container = btn.closest('.sdaf-body') || btn.closest('.block-body') || document.body;
-    const chipsDiv = container.querySelector('[id^="skills-chips"]') || container.querySelector('.sdaf-body');
-    // 找到最近的 skills-chips 或创建一个新的
-    const c = document.getElementById('skills-chips') || chipsDiv;
+    // Find nearest skill chips container: either id="skills-chips" or parent .sdaf-body
+    const c = document.getElementById('skills-chips') || btn.closest('.sdaf-body');
     if (!c) return;
-    const current = Array.from(c.querySelectorAll('.chip')).map(x => x.textContent.replace('×', '').trim());
+    const chipsContainer = c.querySelector('[id^="skills-chips"]') || c;
+    const current = Array.from(chipsContainer.querySelectorAll('.chip')).map(x => x.textContent.replace('×', '').trim());
     const avail = ALL_SKILLS.filter(s => !current.includes(s));
     if (!avail.length) { alert('已添加所有可用 skill'); return; }
     const choice = prompt('从已扫描 skill 中选(逗号分隔):\n' + avail.slice(0, 5).join('\n'), avail[0]);
@@ -1670,7 +1705,7 @@ document.querySelectorAll('[data-action="add-skill"]').forEach(btn => {
     const chip = document.createElement('span');
     chip.className = 'chip';
     chip.innerHTML = `${name} <span class="x" data-action="remove-skill">×</span>`;
-    c.appendChild(chip);
+    chipsContainer.appendChild(chip);
     bindSkillRemove();
   });
 });
