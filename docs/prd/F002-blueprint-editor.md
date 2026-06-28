@@ -147,6 +147,8 @@ type Goal = {
     maxRounds: number;                // default 20
     maxTokensUSD: number;             // default 1.0
     maxWallTimeMs: number;            // default 600000
+    maxTokensNum?: number;            // Token 数量上限(可选,与 maxTokensUSD 二选一或多选 AND)
+    warnAtPercent?: number;           // default 80, 每个预算上限可配独立阈值
   };
 };
 

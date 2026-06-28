@@ -423,6 +423,42 @@ interface HumanGate {
 - [Self-Refine (arXiv 2303.17651)](https://arxiv.org/abs/2303.17651)
 - [Anthropic Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
 - [LangChain Context Engineering](https://www.langchain.com/blog/context-engineering-for-agents) — Write/Select/Compress/Isolate
+
+## FAQ: Skills/MCP/Subagent 加载机制
+
+### 怎么加载给 Agent？让它去读？
+
+**不是让 Agent 去读用户目录，而是 Loop Cockpit 在保存 Blueprint 时预加载到隔离环境：**
+
+| 资源 | 加载方式 | 是否受 projectPath 限制 |
+|---|---|---|
+| **Skills** | 保存时复制/软链接到 `~/.loop-cockpit/loops/<id>/skills-bundle/`，通过 `--plugin-dir` 注入 | 不受限（Skill 文件独立于项目） |
+| **MCP** | 生成 `mcp.json` 配置文件，通过 `--mcp-config --strict-mcp-config` 注入 | **不受限**（MCP server 是独立进程，有自己的文件系统权限） |
+| **Subagents** | 通过 `--agents '{...}'` 内联 JSON 注入，不碰文件系统 | N/A |
+| **Tools** | 通过 `--tools` 白名单控制（Bash/Read/Edit/Write 等） | 编辑/删除受限，读取允许 |
+
+### 读取可以吗？只是不能编辑？
+
+**是的。** Read tool + Bash 读文件是允许的（Agent 需要读取上下文来工作）。但 Edit/Write/Delete 操作受三重约束：
+1. `--add-dir <projectPath>` — Claude Code 原生文件边界
+2. `cwd` 锁 — Worker spawn 时固定工作目录
+3. Claude Code permission rule — 如 `Write(!package.json)` 精确控制
+
+### Token 会不会太多？
+
+Skills 文件本身很小（通常 < 1KB），MCP server 的 schema 也是 JSON 描述（< 5KB）。Loop Cockpit 只在 Blueprint 保存时做一次复制/生成，不实时读取。Agent 看到的是一份精简的 context bundle，不是整个文件系统。
+
+## FAQ: 危险命令如何确保真不会操作？
+
+**三层防护：**
+
+| 层 | 机制 | 说明 |
+|---|---|---|
+| 1. Claude Code permission rule | `customRules` 字段 | 如 `Bash(rm:*)`, `Write(/etc/*)` — Claude Code 原生拦截，在执行前拒绝 |
+| 2. Orchestrator 中间层 | 解析 `stream-json` 输出 | 检测到 tool call 匹配 deny 规则时，直接拒绝执行，不调用 Claude Code |
+| 3. Shell wrapper | spawn 时注入 alias | 如 `alias rm='echo DENIED'` 作为二次兜底 |
+
+原型 UI 中展示三层配置入口，实际实施时第 2 层（Orchestrator 中间层）是核心。
 - [LangGraph interrupt + Command(resume)](https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/)
 - [Claude Code CLI Reference](https://code.claude.com/docs/en/cli-reference) — `--session-id` / `--bare` / `--plugin-dir` 等
 - [Anthropic Multi-Agent Research](https://www.anthropic.com/engineering/multi-agent-research-system)

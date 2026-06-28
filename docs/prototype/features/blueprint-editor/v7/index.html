@@ -418,8 +418,8 @@
         <label data-i18n="core_path">项目路径 <span style="color:var(--danger)">*</span></label>
         <div>
           <div class="path-wrap relative">
-            <input type="text" value="/Users/rocky/project/Loop-Cockpit" class="w-full px-3 py-1.5 rounded mono"/>
-            <button class="btn xsmall absolute right-1.5 top-1/2 -translate-y-1/2" data-i18n="btn_browse">📁 浏览</button>
+            <input type="text" id="core-path-input" value="/Users/rocky/project/Loop-Cockpit" class="w-full px-3 py-1.5 rounded mono"/>
+            <button class="btn xsmall absolute right-1.5 top-1/2 -translate-y-1/2" data-action="browse-path" data-i18n="btn_browse">📁 浏览</button>
           </div>
           <p class="text-dim text-[11px] mt-1" data-i18n="core_path_desc">Loop 工作目录,cwd + 文件读写边界基线</p>
         </div>
@@ -856,7 +856,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
       <div class="row">
         <label data-i18n="retry_max">最多重试次数</label>
         <div class="flex items-center gap-3">
-          <div class="stepper"><button>−</button><input value="3"/><button>+</button></div>
+          <div class="stepper" data-step="1"><button data-dir="-1">−</button><input value="3"/><button data-dir="+1">+</button></div>
           <span class="text-dim text-[11px]" data-i18n="retry_max_desc">0 = 不重试</span>
         </div>
       </div>
@@ -864,7 +864,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
       <div class="row">
         <label data-i18n="retry_timeout">单次超时</label>
         <div class="flex items-center gap-2">
-          <div class="stepper"><button>−</button><input value="10"/><button>+</button></div>
+          <div class="stepper" data-step="5"><button data-dir="-1">−</button><input value="10"/><button data-dir="+1">+</button></div>
           <select class="px-2 py-1 rounded text-[12px]">
             <option value="min">分钟</option>
             <option value="hour">小时(0.5 步长)</option>
@@ -899,7 +899,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
           <div class="row">
             <label data-i18n="reflection_escalate">N 次失败后升级</label>
             <div class="flex items-center gap-2">
-              <div class="stepper"><button>−</button><input value="2"/><button>+</button></div>
+              <div class="stepper" data-step="1"><button data-dir="-1">−</button><input value="2"/><button data-dir="+1">+</button></div>
               <span class="text-dim text-[11px]" data-i18n="reflection_escalate_model">升级到 Opus</span>
             </div>
           </div>
@@ -924,33 +924,34 @@ Round: {{run.round}} · Cost: ${{run.cost}}
       <div class="row">
         <label data-i18n="deny_budget_rounds">总 Round 上限</label>
         <div class="flex items-center gap-3">
-          <div class="stepper"><button>−</button><input value="10"/><button>+</button></div>
+          <div class="stepper" data-step="1"><button data-dir="-1">−</button><input value="10"/><button data-dir="+1">+</button></div>
           <span class="text-dim text-[11px]">轮</span>
         </div>
       </div>
 
       <div class="row">
-        <label data-i18n="deny_budget_tokens">Token 上限($)</label>
-        <div class="flex items-center gap-3">
-          <span class="text-muted">$</span>
-          <input type="text" value="" placeholder="(空 = 不限)" class="px-2 py-1.5 rounded mono w-28"/>
-          <span class="text-dim text-[11px]">撞了停</span>
+        <label data-i18n="deny_budget_tokens_num">Token 数量上限</label>
+        <div class="flex items-center gap-2">
+          <div class="stepper" data-step="1000"><button data-dir="-1">−</button><input value="" placeholder="(空 = 不限)" class="w-20"/><button data-dir="+1">+</button></div>
+          <select class="px-2 py-1 rounded text-[12px]"><option>K</option><option>M</option></select>
+          <span class="text-dim text-[11px]" data-i18n="deny_warn_prefix">警告阈值 <input type="text" value="80" class="w-10 px-1 py-0.5 rounded text-center mono" style="font-size:11px"/>%</span>
+        </div>
+      </div>
+
+      <div class="row">
+        <label data-i18n="deny_budget_tokens_usd">花费上限($)</label>
+        <div class="flex items-center gap-2">
+          <div class="stepper" data-step="0.5"><button data-dir="-1">−</button><input value="" placeholder="(空 = 不限)" class="w-20"/><button data-dir="+1">+</button></div>
+          <span class="text-dim text-[11px]" data-i18n="deny_warn_prefix_usd">警告阈值 <input type="text" value="80" class="w-10 px-1 py-0.5 rounded text-center mono" style="font-size:11px"/>%</span>
         </div>
       </div>
 
       <div class="row">
         <label data-i18n="deny_budget_time">Wall time 上限</label>
-        <div class="flex items-center gap-3">
-          <div class="stepper"><button>−</button><input value="10"/><button>+</button></div>
-          <select class="px-2 py-1 rounded text-[12px]"><option>min</option><option>hour</option></select>
-        </div>
-      </div>
-
-      <div class="row">
-        <label data-i18n="deny_budget_warn">警告阈值 %</label>
-        <div class="flex items-center gap-3">
-          <div class="stepper"><button>−</button><input value="80"/><button>+</button></div>
-          <span class="text-dim text-[11px]">达到阈值发通知</span>
+        <div class="flex items-center gap-2">
+          <div class="stepper" data-step="5"><button data-dir="-1">−</button><input value="10"/><button data-dir="+1">+</button></div>
+          <select class="px-2 py-1 rounded text-[12px]"><option value="min">min</option><option value="hour">hour(0.5 步长)</option></select>
+          <span class="text-dim text-[11px]" data-i18n="deny_warn_prefix_time">警告阈值 <input type="text" value="80" class="w-10 px-1 py-0.5 rounded text-center mono" style="font-size:11px"/>%</span>
         </div>
       </div>
 
@@ -977,7 +978,8 @@ Round: {{run.round}} · Cost: ${{run.cost}}
       <div class="row">
         <label data-i18n="deny_strict_boundary">严格边界</label>
         <div>
-          <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> 严格禁止超出 projectPath</label>
+          <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="deny_strict_boundary">严格禁止超出 projectPath</span></label>
+          <span class="text-dim text-[10px] mt-0.5 block" data-i18n="deny_strict_tip">通过 --add-dir + cwd 锁 + permission rule 三重约束</span>
         </div>
       </div>
 
@@ -1152,8 +1154,11 @@ const I18N = {
     sec_deny: '禁止边界',
     sec_deny_desc: 'Token / 花费上限 · 禁止编辑哪些文件 · 禁止命令',
     deny_budget: '预算上限',
-    deny_budget_rounds: '总 Round 上限', deny_budget_tokens: 'Token 上限($)',
-    deny_budget_time: 'Wall time 上限', deny_budget_warn: '警告阈值 %',
+    deny_budget_rounds: '总 Round 上限', deny_budget_tokens_num: 'Token 数量上限',
+    deny_budget_tokens_usd: '花费上限($)',
+    deny_budget_time: 'Wall time 上限',
+    deny_warn_prefix: '警告阈值', deny_warn_prefix_usd: '警告阈值', deny_warn_prefix_time: '警告阈值',
+    deny_strict_tip: '通过 --add-dir + cwd 锁 + permission rule 三重约束',
     deny_files: '文件保护',
     deny_edit_paths: '禁止编辑', deny_edit_placeholder: '例:package.json, LICENSE, .env*(逗号分隔 glob)',
     deny_delete_paths: '禁止删除', deny_strict_boundary: '严格边界',
@@ -1257,8 +1262,11 @@ const I18N = {
     sec_deny: 'Deny & Boundary',
     sec_deny_desc: 'Token/cost limits · File restrictions · Dangerous commands',
     deny_budget: 'Budget Limits',
-    deny_budget_rounds: 'Max Rounds', deny_budget_tokens: 'Max Tokens ($)',
-    deny_budget_time: 'Max Wall Time', deny_budget_warn: 'Warn at %',
+    deny_budget_rounds: 'Max Rounds', deny_budget_tokens_num: 'Max Tokens (#)',
+    deny_budget_tokens_usd: 'Max Spend ($)',
+    deny_budget_time: 'Max Wall Time',
+    deny_warn_prefix: 'Warn at', deny_warn_prefix_usd: 'Warn at', deny_warn_prefix_time: 'Warn at',
+    deny_strict_tip: 'Triple constraint: --add-dir + cwd lock + permission rule',
     deny_files: 'File Protection',
     deny_edit_paths: 'Disallow Edit', deny_edit_placeholder: 'e.g. package.json, LICENSE, .env* (comma-separated glob)',
     deny_delete_paths: 'Disallow Delete', deny_strict_boundary: 'Strict boundary',
@@ -1524,6 +1532,53 @@ function renderMonthDays() {
 }
 renderMonthDays();
 
+// ============ Mock 目录选择器 ============
+function mockBrowsePath(targetInput) {
+  const paths = ['/Users/rocky/project/my-app', '/Users/rocky/project/website', '/Users/rocky/project/data-pipeline', '/tmp/test-project'];
+  const picked = prompt('选择项目路径(输入序号 1-' + paths.length + ' 或直接输入路径):\n' + paths.map((p, i) => (i+1) + '. ' + p).join('\n'), paths[0]);
+  if (picked) {
+    const num = parseInt(picked);
+    targetInput.value = (num >= 1 && num <= paths.length) ? paths[num - 1] : picked;
+  }
+}
+
+// ============ Browse 按钮 ============
+document.querySelector('[data-action="browse-path"]')?.addEventListener('click', () => {
+  const input = document.querySelector('#core-path-input');
+  if (input) mockBrowsePath(input);
+});
+
+// ============ 通用 Stepper handler ============
+document.querySelectorAll('.stepper').forEach(container => {
+  const step = parseFloat(container.dataset.step || '1');
+  const input = container.querySelector('input');
+  container.querySelectorAll('button[data-dir]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dir = btn.dataset.dir === '+1' ? 1 : -1;
+      let val = parseFloat(input.value) || 0;
+      val = Math.max(0, val + dir * step);
+      // 处理浮点精度
+      if (step < 1) val = parseFloat(val.toFixed(2));
+      input.value = val;
+    });
+  });
+});
+
+// ============ Deny Browse ============
+function bindDenyBrowse() {
+  document.querySelectorAll('[data-action="browse-deny"]').forEach(btn => {
+    btn.onclick = () => {
+      const input = btn.closest('.deny-row').querySelector('input');
+      const paths = ['package.json', 'LICENSE', '.env', 'src/', 'tests/', '**/*.test.ts', 'docs/'];
+      const picked = prompt('选择文件/文件夹(输入序号 1-' + paths.length + ' 或直接输入):\n' + paths.map((p, i) => (i+1) + '. ' + p).join('\n'), paths[0]);
+      if (picked) {
+        const num = parseInt(picked);
+        input.value = (num >= 1 && num <= paths.length) ? paths[num - 1] : picked;
+      }
+    };
+  });
+}
+
 // ============ Constraints 增删 ============
 document.querySelector('[data-action="add-constraint"]')?.addEventListener('click', () => {
   const list = document.getElementById('constraints-list');
@@ -1551,59 +1606,91 @@ function bindDenyRemove() {
 document.querySelector('[data-action="add-deny-edit"]')?.addEventListener('click', () => {
   const list = document.getElementById('deny-edit-list');
   const row = document.createElement('div');
-  row.className = 'flex gap-2 deny-row';
+  row.className = 'flex gap-2 deny-row items-center';
   row.innerHTML = '<input type="text" placeholder="例:package.json" class="flex-1 px-3 py-1.5 rounded mono"/>' +
+    '<button class="btn xsmall" data-action="browse-deny" title="📁 浏览">📁</button>' +
     '<button class="btn xsmall danger" data-action="remove-deny">移除</button>';
   list.appendChild(row);
   bindDenyRemove();
+  bindDenyBrowse();
   row.querySelector('input').focus();
 });
 document.querySelector('[data-action="add-deny-delete"]')?.addEventListener('click', () => {
   const list = document.getElementById('deny-delete-list');
   const row = document.createElement('div');
-  row.className = 'flex gap-2 deny-row';
+  row.className = 'flex gap-2 deny-row items-center';
   row.innerHTML = '<input type="text" placeholder="例:**/*.test.ts" class="flex-1 px-3 py-1.5 rounded mono"/>' +
+    '<button class="btn xsmall" data-action="browse-deny" title="📁 浏览">📁</button>' +
     '<button class="btn xsmall danger" data-action="remove-deny">移除</button>';
   list.appendChild(row);
   bindDenyRemove();
+  bindDenyBrowse();
   row.querySelector('input').focus();
 });
 
 // ============ Skills 增删 ============
+const ALL_SKILLS = ['code-review', 'executing-plans', 'test-driven-development', 'writing-plans', 'brainstorming', 'systematic-debugging', 'verification-before-completion', 'using-git-worktrees', 'receiving-code-review', 'finishing-a-development-branch', 'requesting-code-review'];
+
 function bindSkillRemove() {
   document.querySelectorAll('[data-action="remove-skill"]').forEach(x => {
     x.onclick = () => x.closest('.chip').remove();
   });
 }
 bindSkillRemove();
-document.querySelector('[data-action="add-skill"]')?.addEventListener('click', () => {
-  const c = document.getElementById('skills-chips');
-  // 模拟弹窗:从已扫的 12+2 skill 随机选一个
-  const allSkills = ['code-review', 'executing-plans', 'test-driven-development', 'writing-plans', 'brainstorming', 'systematic-debugging', 'verification-before-completion', 'using-git-worktrees', 'receiving-code-review', 'finishing-a-development-branch', 'requesting-code-review'];
-  const current = Array.from(c.querySelectorAll('.chip')).map(x => x.textContent.replace('×', '').trim());
-  const avail = allSkills.filter(s => !current.includes(s));
-  if (!avail.length) { alert('已添加所有可用 skill'); return; }
-  const choice = prompt('从已扫描 skill 中选(逗号分隔):\n' + avail.slice(0, 5).join('\n'), avail[0]);
-  if (!choice) return;
-  const name = choice.trim();
-  if (!avail.includes(name)) { alert('skill 不在已扫描列表: ' + name); return; }
-  const chip = document.createElement('span');
-  chip.className = 'chip';
-  chip.innerHTML = `${name} <span class="x" data-action="remove-skill">×</span>`;
-  c.appendChild(chip);
+
+// 初始化: 预填充已选的 skills (从 localStorage 或默认)
+function initSkills() {
+  const defaultChips = ['brainstorming', 'test-driven-development', 'systematic-debugging'];
+  defaultChips.forEach(name => {
+    const c = document.getElementById('skills-chips');
+    if (!c || c.querySelector(`.chip:has(span:first-child:${name})`)) return;
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${name} <span class="x" data-action="remove-skill">×</span>`;
+    c.appendChild(chip);
+  });
   bindSkillRemove();
+}
+initSkills();
+
+document.querySelectorAll('[data-action="add-skill"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const container = btn.closest('.sdaf-body') || btn.closest('.block-body') || document.body;
+    const chipsDiv = container.querySelector('[id^="skills-chips"]') || container.querySelector('.sdaf-body');
+    // 找到最近的 skills-chips 或创建一个新的
+    const c = document.getElementById('skills-chips') || chipsDiv;
+    if (!c) return;
+    const current = Array.from(c.querySelectorAll('.chip')).map(x => x.textContent.replace('×', '').trim());
+    const avail = ALL_SKILLS.filter(s => !current.includes(s));
+    if (!avail.length) { alert('已添加所有可用 skill'); return; }
+    const choice = prompt('从已扫描 skill 中选(逗号分隔):\n' + avail.slice(0, 5).join('\n'), avail[0]);
+    if (!choice) return;
+    const name = choice.trim();
+    if (!avail.includes(name)) { alert('skill 不在已扫描列表: ' + name); return; }
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${name} <span class="x" data-action="remove-skill">×</span>`;
+    c.appendChild(chip);
+    bindSkillRemove();
+  });
 });
 
 // ============ MCP 增删 ============
+const DEFAULT_MCPS = [
+  { name: 'github', command: 'npx -y @modelcontextprotocol/server-github' },
+  { name: 'filesystem', command: 'npx -y @modelcontextprotocol/server-filesystem /tmp' },
+];
+
 function renderMCPs() {
   const list = document.getElementById('mcp-list');
   if (!list) return;
-  const data = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
-  list.innerHTML = '';
+  let data = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
+  // 首次加载用默认值
   if (!data.length) {
-    list.innerHTML = '<div class="text-dim text-[11px]">暂无</div>';
-    return;
+    data = [...DEFAULT_MCPS];
+    localStorage.setItem('lc-mcp-list', JSON.stringify(data));
   }
+  list.innerHTML = '';
   data.forEach((m, i) => {
     const row = document.createElement('div');
     row.className = 'flex gap-2 items-center surface-2 border-1 rounded p-2';
@@ -1626,23 +1713,27 @@ document.querySelector('[data-action="add-mcp"]')?.addEventListener('click', () 
   const name = prompt('MCP server 名称:');
   if (!name) return;
   const command = prompt('启动命令(例: npx -y @modelcontextprotocol/server-github):', 'npx -y @modelcontextprotocol/server-xxx');
-  if (!command) return;
+  if (command === null) return;
   const d = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
-  d.push({ name, command });
+  d.push({ name, command: command || '' });
   localStorage.setItem('lc-mcp-list', JSON.stringify(d));
   renderMCPs();
 });
 
 // ============ Subagent 增删 ============
+const DEFAULT_SUBAGENTS = [
+  { name: 'code-reviewer', prompt: '专门负责代码审查,找出潜在 bug 和改进建议', tools: 'Read,Grep,Edit' },
+];
+
 function renderSubagents() {
   const list = document.getElementById('subagent-list');
   if (!list) return;
-  const data = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
-  list.innerHTML = '';
+  let data = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
   if (!data.length) {
-    list.innerHTML = '<div class="text-dim text-[11px]">暂无</div>';
-    return;
+    data = [...DEFAULT_SUBAGENTS];
+    localStorage.setItem('lc-subagent-list', JSON.stringify(data));
   }
+  list.innerHTML = '';
   data.forEach((s, i) => {
     const row = document.createElement('div');
     row.className = 'flex gap-2 items-center surface-2 border-1 rounded p-2';
@@ -1668,7 +1759,7 @@ document.querySelector('[data-action="add-subagent"]')?.addEventListener('click'
   if (prompt_text === null) return;
   const tools = prompt('可用工具(逗号分隔,空=全部):', 'Bash, Read, Grep');
   const d = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
-  d.push({ name, prompt: prompt_text, tools });
+  d.push({ name, prompt: prompt_text, tools: tools || '' });
   localStorage.setItem('lc-subagent-list', JSON.stringify(d));
   renderSubagents();
 });
