@@ -31,7 +31,28 @@ Run 内 Agent 完成的**最小工作单元**。
 - 复杂 Loop 可拆多 Task(如 "写→审→测"),共享 worktree
 
 ### Trigger
-Loop 的启动触发条件,多源:Cron / Manual / Webhook / Git event / Email / Message / Goal-based。
+Loop 的启动触发条件,多源:Cron / Manual / 一次性 / Webhook / Git event / Email / Message / Goal-based。
+
+### Phase (阶段) ★ Iter 2 新增
+**Loop 内部的一个工作单元**,有独立的:system prompt / 可用 skill / 可用 tools / 可用 MCP / 文件读写权限 / 评估器 / 分支规则。
+- 一个 Loop 由 N 个 Phase 组成,默认线性顺序,可加分支
+- 阶段间通过同 `--session-id` 共享 Claude 会话上下文
+- 例:Bug 修复 Loop = `分析 → (按难度分支) → 修复 → 测试`
+- 详见 [ADR-0009](./decisions/0009-phase-orchestration.md)
+
+### Evaluator (评估器) ★ Iter 2 新增
+**判断 Phase 是否完成的机制**,4 种内置实现:
+- `shell` — 退出码 0 = pass(向后兼容 Done Criteria)
+- `llm-judge` — LLM 分类输出,如 "trivial/moderate/complex"
+- `regex` — stdout 匹配模式
+- `none` — 不评估,直接跳下一阶段
+- 旧 "Done Criteria" 字段(Iter 1)等同于 `shell` 类型的 Phase Evaluator
+
+### Branch (分支) ★ Iter 2 新增
+**Phase 评估完成后跳转到哪个 Phase 的规则**:
+- `if: <evaluator-result>` → 跳到指定 Phase ID
+- `default:` → 兜底
+- 内置终止符: `__terminal__`(整 Loop 成功)/ `__fail__`(失败)/ `__notify__`(通知后结束)
 
 ---
 
@@ -91,3 +112,4 @@ Loop 的启动触发条件,多源:Cron / Manual / Webhook / Git event / Email / 
 |---|---|---|
 | 2026-06-24 | v0.1 | 首版 |
 | 2026-06-27 | v0.2 | 砍冗余、去角色类与修订啰嗦段、合表格 |
+| 2026-06-28 | v0.3 | ★ 加 Phase / Evaluator / Branch 三个新词条(Iter 2 Phase 编排架构) |

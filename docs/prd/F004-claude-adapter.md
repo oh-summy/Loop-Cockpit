@@ -76,6 +76,40 @@ ux-flow Flow 1 要求用户能在 UI 看到 Agent **实时**输出。这意味�
 
 ## 6. 数据契约 / 接口
 
+> ⚠️ **2026-06-28 v0.2 重大改动**:Adapter 加"多阶段同 session-id 编排"实现。详见 [ADR-0009 §2](../architecture/decisions/0009-phase-orchestration.md)。
+
+### 6.0 阶段执行命令模板(★ v0.2 新增)
+
+```bash
+# 阶段 1(首次,Loop Cockpit 生成 session UUID)
+claude -p "$PHASE_USER_MSG" \
+  --bare \
+  --session-id "$SESSION_UUID" \
+  --append-system-prompt-file "$LOOP_DIR/phase1.md" \
+  --tools "Read,Glob,Grep" \
+  --plugin-dir "$LOOP_DIR/phase1-skills/" \
+  --mcp-config "$LOOP_DIR/phase1-mcp.json" \
+  --strict-mcp-config \
+  --agents "$(cat $LOOP_DIR/phase1-agents.json)" \
+  --permission-mode plan \
+  --add-dir "$PROJECT_PATH" \
+  --effort high \
+  --output-format stream-json --verbose \
+  --include-partial-messages --include-hook-events \
+  --max-turns 50 --max-budget-usd 5.00
+
+# 阶段 2+(用 --resume,session 续)
+claude -p "$PHASE_USER_MSG" \
+  --bare \
+  --resume "$SESSION_UUID" \              # ← 关键
+  --append-system-prompt-file "$LOOP_DIR/phase2.md" \
+  --tools "Bash,Edit,Read,Write" \         # 改阶段工具集
+  --permission-mode acceptEdits \          # 改阶段权限
+  --dangerously-skip-permissions \         # 改阶段无人值守
+  --effort medium \                        # 改阶段思考深度
+  ...
+```
+
 ### 6.1 AgentAdapter 接口
 
 ```typescript
@@ -210,3 +244,4 @@ estimateTokens(rawOutput: string): { input: number; output: number; costUsd: num
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft |
+| 2026-06-28 | v0.2 | ★ 加阶段执行命令模板,详细 flag 集见 §6.0。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |

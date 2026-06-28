@@ -73,6 +73,8 @@ updated: 2026-06-28
 
 ## 6. 数据契约 / 接口
 
+> ⚠️ **2026-06-28 v0.2 重大改动**:Blueprint 加 `phases[]` 字段,Loop 升级为多阶段编排。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md)。
+
 ### 6.1 DB Schema(Drizzle / SQLite)
 
 ```typescript
@@ -81,27 +83,50 @@ export const blueprints = sqliteTable("blueprints", {
   id: text("id").primaryKey().$defaultFn(() => nanoid()),
   name: text("name").notNull(),
   goal: text("goal").notNull(),
-  doneCriteria: text("done_criteria").notNull(),
-  agent: text("agent").notNull(),              // "claude-code" (Iter 2 只一个)
-  model: text("model"),                         // 可选
+  doneCriteria: text("done_criteria"),           // ⚠ 保留作向后兼容,新建用 phases[0].evaluator
+  agent: text("agent").notNull(),
+  model: text("model"),
   projectPath: text("project_path").notNull(),
   retryPolicy: text("retry_policy", { mode: "json" }).$type<RetryPolicy>().notNull(),
   triggers: text("triggers", { mode: "json" }).$type<TriggerConfig[]>().notNull().default(sql`'[]'`),
+
+  // ★ Iter 2 v0.2 新增 — Phase 编排
+  phases: text("phases", { mode: "json" }).$type<Phase[]>().notNull().default(sql`'[]'`),
+  startPhaseId: text("start_phase_id"),
+
+  type: text("type", { mode: "json" }).$type<string[]>().default(sql`'[]'`),  // bug / refactor / test / docs / check / other
   status: text("status").$type<"active" | "disabled">().notNull().default("active"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()).notNull(),
 });
 
-type RetryPolicy = {
-  maxRetries: number;        // default 1
-  timeoutMinutes: number;    // default 10
-  tokenBudget: string;       // default "$1" (USD)
-  onFail: "stop" | "notify";
+// Phase 完整定义见 ADR-0009
+type Phase = {
+  id: string;
+  name: string;
+  order: number;
+  systemPromptTemplate?: string;
+  appendUserMessage?: string;
+  agent: 'claude-code';
+  model?: string;
+  effort?: 'low' | 'medium' | 'high';
+  skills: string[];
+  tools: string[];
+  mcpServers: MCPRef[];
+  subagents?: SubagentRef[];
+  permissionMode: 'bypassPermissions' | 'acceptEdits' | 'plan' | 'interactive';
+  allowedDirs: string[];
+  disallowedTools?: string[];
+  evaluator: { type: 'shell' | 'llm-judge' | 'regex' | 'none', [k: string]: any };
+  branches: Array<{ if?: string; nextPhase?: string; default?: string }>;
+  maxTurns?: number;
+  maxBudgetUsd?: number;
 };
 
-type TriggerConfig =
-  | { type: "manual" }
-  | { type: "cron"; expression: string };  // "0 9 * * *"
+type RetryPolicy = { maxRetries: number; timeoutMinutes: number; tokenBudget: string; onFail: "stop" | "notify" };
+type TriggerConfig = { type: "manual" } | { type: "once", at: string } | { type: "cron"; expression: string };
+type MCPRef = { name: string };
+type SubagentRef = { name: string; prompt: string; tools?: string[] };
 ```
 
 ### 6.2 REST API(Fastify)
@@ -203,3 +228,4 @@ const BlueprintInputSchema = z.object({
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft,基于 Iter 2 主线 + 全部已 Accepted 决策 |
+| 2026-06-28 | v0.2 | ★ **重大改动**:加 `phases[]` / `startPhaseId` / `type[]` 字段;Blueprint 编辑器需重设计加 Phase 编辑区。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |

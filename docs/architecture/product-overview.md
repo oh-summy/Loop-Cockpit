@@ -87,18 +87,52 @@ Loop Cockpit 填补「**独立开发者本地可视化设计 Loop**」这块空�
 > 术语遵循 [`glossary.md`](./glossary.md)
 
 ### A · Loop Blueprint 系统 🔴
-- A1 数据模型:`id, name, goal, doneCriteria, agent, model, skills[], mcpServers[], retryPolicy, timeout, tokenBudget, triggers[], promptTemplate, projectPath, status`
+- A1 数据模型:`id, name, goal, doneCriteria, agent, model, skills[], mcpServers[], retryPolicy, timeout, tokenBudget, triggers[], promptTemplate, projectPath, type[], phases[], startPhaseId, status`
 - A2 CRUD API:`POST/GET/PATCH/DELETE /api/blueprints`
-- A3 校验引擎:zod schema + cron expression + agent compatibility
+- A3 校验引擎:zod schema + cron expression + agent compatibility + **Phase 有向图无环校验**
+- A4 ★ **Phase 编辑器**:线性 / 分支阶段编排,详见 §A* Phase 编排
+
+### A* · Phase 编排系统 🔴(★ Iter 2 新增,本产品核心差异化)
+> 详细架构见 [ADR-0009](./decisions/0009-phase-orchestration.md)
+
+#### A*1 Phase 数据模型 🔴
+- 每个 Loop 由 N 个 Phase 组成,默认线性,可加分支
+- Phase 字段:`id / name / order / systemPromptTemplate / agent / model / effort / skills[] / tools[] / mcpServers[] / subagents[] / permissionMode / allowedDirs[] / disallowedTools[] / evaluator / branches[]`
+
+#### A*2 Phase Evaluator(评估器) 🔴
+- `shell` — 退出码 0 = pass(向后兼容现有 Done Criteria)
+- `llm-judge` — LLM 分类输出,如 `trivial / moderate / complex`
+- `regex` — stdout 匹配模式
+- `none` — 该阶段只跑不评,直接进下一个
+
+#### A*3 Phase Branch(分支) 🔴
+- `if: <evaluator-result>` → 跳到指定 Phase ID
+- `default:` → 兜底
+- 内置终止:`__terminal__`(整 Loop 成功)/ `__fail__`(失败)/ `__notify__`(通知后结束)
+
+#### A*4 阶段编排示例
+1. **简单 Loop**(只 1 阶段):`analyze` → `__terminal__`
+2. **Bug 修复 Loop**:`analyze` → (LLM judge 难度) → `direct-fix` 或 `plan-then-fix` → `test` → `__terminal__` / `__fail__`
+3. **通知 Loop**:`collect` → `notify` → `__terminal__`
 
 ### B · Loop Runtime 引擎 🔴
-- B1 状态机:`idle → initializing → running → evaluating → (success | retrying | failed | stopped)`
-- B2 生命周期:Worktree 分配 → Memory 加载 → system prompt 拼装 → PTY 启动 → 流式接收 → Done Criteria 评估 → retry 或 success → 写 Memory → Channel 通知
-- B3 执行 API:`POST /api/runs`, `POST /:id/stop`, `GET /:id`, `GET /:id/logs`(SSE), `GET /:id/stream`(WebSocket)
+- B1 状态机:`idle → initializing → running(逐 Phase 推进) → evaluating(Phase 评估器) → success | retrying | failed | stopped`
+- B2 生命周期:Worktree 分配 → Memory 加载 → **逐 Phase spawn `claude --session-id` / 后续 `--resume`** → 阶段间换 system prompt / tools / effort → Phase Evaluator 评估 → 分支跳转 → 直到 `__terminal__` 或所有 Phase 走完
+- B3 执行 API:`POST /api/runs`, `POST /:id/stop`, `GET /:id`, `GET /:id/logs`(SSE), `GET /:id/stream`(WebSocket),加 `GET /:id/phases`(当前阶段进度)
 
 ### C · Agent 适配层 🔴(Claude) / 🟡(其他)
 - C1 统一接口:`AgentAdapter { start, parseExitCode, estimateTokens }` + `AgentProcess { pty, onData, onExit, write, kill }`
 - C2 适配优先级:Claude Code(P0/Iter 1-2)、OpenCode/Kimi(P1/Iter 3)、Codex/Trae/Qwen/MiniMax(P2/Iter 4+)
+- C3 ★ **Claude Code 阶段执行 flag 集**(详见 [ADR-0009 §2](./decisions/0009-phase-orchestration.md)):
+  - 跨阶段会话:`--session-id <UUID>` (首) / `--resume <UUID>` (后续)
+  - 切断默认 skill/MCP 自动发现:`--bare`
+  - 注入阶段勾选 skills:`--plugin-dir <bundle>`
+  - 注入阶段勾选 MCP:`--mcp-config foo.json --strict-mcp-config`
+  - 注入阶段勾选 subagents:`--agents '{...}'`
+  - 限制 built-in 工具:`--tools "Bash,Edit,Read"`
+  - 文件边界:`--add-dir <path>` + cwd 锁定
+  - 权限模式:`--permission-mode plan|acceptEdits|bypassPermissions`
+  - 无人值守:`--dangerously-skip-permissions`(危险阶段单独关)
 
 ### D · PTY 执行层 🔴(**最关键**)
 - D1 PTY Runner:基于 `node-pty`,跨平台,捕获 ANSI
@@ -178,3 +212,4 @@ Loop Cockpit 填补「**独立开发者本地可视化设计 Loop**」这块空�
 |---|---|---|
 | 2026-06-24 | v0.1 | 首版(原 prd.md),覆盖 A-K 模块 + Trigger 总线设计 |
 | 2026-06-27 | v0.2 | 合并 whitepaper(why/场景/定位),迁到 architecture/,与新文档结构对齐 |
+| 2026-06-28 | v1.0 | ★ **加入 Phase 编排架构**(ADR-0009 落地),Iter 2 产品核心差异化升级 |

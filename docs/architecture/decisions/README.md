@@ -17,6 +17,9 @@
 | 0004 | Worktree 隔离 | _计划 Iter 3_ | - |
 | 0005 | Trigger 事件总线 | _计划 Iter 4_ | - |
 | 0006 | _保留:Agenda 降级时使用_ | - | - |
+| 0007 | _保留:Evaluator 抽象(留待 ADR-0009 触发后补)_ | - | - |
+| 0008 | _保留:Memory 系统设计_ | _计划 Iter 5_ | - |
+| [0009](./0009-phase-orchestration.md) | **Loop 阶段编排架构(Phase)** | ✅ Accepted | 2026-06-28 |
 
 ---
 

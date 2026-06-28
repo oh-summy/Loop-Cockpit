@@ -80,7 +80,9 @@ Loop Engineering 的核心 = **目标驱动的自治闭环**。这个闭环的"�
 
 ## 6. 数据契约 / 接口
 
-### 6.1 状态机
+> ⚠️ **2026-06-28 v0.2 重大改动**:Run 加阶段进度子状态,逐 Phase 推进。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md)。
+
+### 6.1 状态机(主)
 
 ```
                 ┌─────────────────────────────────┐
@@ -95,34 +97,57 @@ Loop Engineering 的核心 = **目标驱动的自治闭环**。这个闭环的"�
 
 非法迁移直接抛 `IllegalStateError`,不静默吞。
 
+### 6.1.* Phase 子状态(★ v0.2 新增)
+
+```
+running 状态内部 = 逐 Phase 推进:
+  phase[0] spawn → claude --session-id $UUID
+       → 阶段执行(running) → evaluator(evaluating) → branches → phase[1]
+  phase[1] spawn → claude --resume $UUID
+       → ...
+  最后 phase → branches: __terminal__ 或 __fail__
+```
+
+每个 Phase 内部三态:`running → evaluating → (passed | failed | skipped)`。
+
 ### 6.2 DB Schema
 
 ```typescript
 export const runs = sqliteTable("runs", {
   id: text("id").primaryKey().$defaultFn(() => nanoid()),
   blueprintId: text("blueprint_id").notNull().references(() => blueprints.id),
-  blueprintSnapshot: text("blueprint_snapshot", { mode: "json" }).$type<Blueprint>().notNull(),  // D5.2
+  blueprintSnapshot: text("blueprint_snapshot", { mode: "json" }).$type<Blueprint>().notNull(),
   status: text("status").$type<RunStatus>().notNull().default("idle"),
-  iteration: integer("iteration").notNull().default(0),     // 0=首次,1=第一次重试,...
-  parentRunId: text("parent_run_id").references(() => runs.id),  // D2.4 "延续自 #N"
+  iteration: integer("iteration").notNull().default(0),
+  parentRunId: text("parent_run_id").references(() => runs.id),
   startedAt: integer("started_at", { mode: "timestamp" }),
   endedAt: integer("ended_at", { mode: "timestamp" }),
   exitCode: integer("exit_code"),
-  errorSnippet: text("error_snippet"),                       // ADR-0003 Q6:DB 存关键片段
-  rawLogPath: text("raw_log_path"),                          // ADR-0003 Q6:文件路径
+  errorSnippet: text("error_snippet"),
+  rawLogPath: text("raw_log_path"),
   tokenCostUsd: real("token_cost_usd"),
   doneCriteriaResult: text("done_criteria_result", { mode: "json" }).$type<DoneResult>(),
+
+  // ★ v0.2 新增 — Phase 编排
+  claudeSessionId: text("claude_session_id"),            // 同一 Run 内跨 Phase 共享的 UUID
+  currentPhaseId: text("current_phase_id"),              // 当前在哪个 Phase
+  phaseHistory: text("phase_history", { mode: "json" }).$type<PhaseExecution[]>().default(sql`'[]'`),
 });
 
-type RunStatus = "idle" | "initializing" | "running" | "evaluating" | "success" | "retrying" | "failed" | "stopped";
+interface PhaseExecution {
+  phaseId: string;
+  startedAt: timestamp;
+  endedAt?: timestamp;
+  status: 'running' | 'evaluating' | 'passed' | 'failed' | 'skipped';
+  evaluatorResult?: any;       // LLM judge 给的分类 / shell exit code / regex match
+  branchTaken?: string;        // 走了哪个分支
+  toolCallCount: number;
+  tokensIn: number;
+  tokensOut: number;
+}
 
-type DoneResult = {
-  passed: boolean;
-  exitCode: number;
-  stdoutTail: string;   // 最后 4KB
-  stderrTail: string;
-  durationMs: number;
-};
+type RunStatus = "idle" | "initializing" | "running" | "evaluating" | "success" | "retrying" | "failed" | "stopped";
+type DoneResult = { passed: boolean; exitCode: number; stdoutTail: string; stderrTail: string; durationMs: number };
 ```
 
 ### 6.3 REST + WebSocket API
@@ -201,3 +226,4 @@ async function advanceRun(runId: string) {
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft |
+| 2026-06-28 | v0.2 | ★ 加 Phase 子状态机 + claudeSessionId / currentPhaseId / phaseHistory 字段。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |
