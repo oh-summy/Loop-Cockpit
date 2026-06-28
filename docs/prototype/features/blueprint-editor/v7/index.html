@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-  (function(){ const t = localStorage.getItem('lc-theme') || 'dark'; if (t==='dark') document.documentElement.classList.add('dark'); })();
+  (function(){ document.documentElement.classList.add('dark'); })();
   tailwind.config = { darkMode: 'class' }
 </script>
 <style>
@@ -159,7 +159,7 @@
 <header class="border-b-1 surface" style="position: sticky; top: 0; z-index: 40;">
   <div class="max-w-[1100px] mx-auto px-6 h-12 flex items-center gap-6">
     <span class="font-semibold flex items-center gap-1.5 text-[14px]">
-      <span style="color:var(--accent)" class="mono">▸</span>
+      <span style="color:var(--accent)" class="mono text-xl">◈</span>
       Loop Cockpit
     </span>
     <nav class="flex gap-1 text-[12px] text-muted">
@@ -169,10 +169,7 @@
     </nav>
     <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
       <button id="lang-toggle" class="btn ghost xsmall">
-        <span>🌐</span><span id="lang-label">中</span>
-      </button>
-      <button id="theme-toggle" class="btn ghost xsmall">
-        <span id="theme-icon">🌙</span><span id="theme-label" data-i18n="theme_dark">暗色</span>
+        <span>🌐</span><span id="lang-label">ZH</span>
       </button>
     </div>
   </div>
@@ -232,15 +229,30 @@
       <div class="row">
         <label data-i18n="trigger_mode">触发方式</label>
         <div>
-          <div class="seg">
+          <div class="seg mb-3">
             <button class="trigger-mode active" data-mode="manual" data-i18n="trigger_manual">手动</button>
             <button class="trigger-mode" data-mode="once" data-i18n="trigger_once">一次性</button>
             <button class="trigger-mode" data-mode="schedule" data-i18n="trigger_schedule">定时</button>
-            <button class="trigger-mode" disabled>
-              <span data-i18n="trigger_webhook">Webhook</span>
-              <span class="tok tok-iter ml-1" data-i18n="trigger_iter_hint">(Iter 4 上线)</span>
-            </button>
           </div>
+
+          <details class="expert-only mt-2">
+            <summary class="text-[11px] text-dim cursor-pointer select-none">+ <span data-i18n="trigger_more">更多触发器 (Iter 3+)</span></summary>
+            <div class="seg mt-2" style="flex-direction:column; align-items:stretch;">
+              <button class="trigger-mode" data-mode="webhook" style="display:flex;justify-content:space-between;"><span>🔗 Webhook</span><span class="tok tok-iter">Iter 3</span></button>
+              <button class="trigger-mode" data-mode="git-push" style="display:flex;justify-content:space-between;"><span>📦 Git Push</span><span class="tok tok-iter">Iter 3</span></button>
+              <button class="trigger-mode" data-mode="git-pr" style="display:flex;justify-content:space-between;"><span>🔀 Git Pull Request</span><span class="tok tok-iter">Iter 3</span></button>
+              <button class="trigger-mode" data-mode="git-issue" style="display:flex;justify-content:space-between;"><span>📋 Git Issue</span><span class="tok tok-iter">Iter 3</span></button>
+              <button class="trigger-mode" data-mode="git-comment" style="display:flex;justify-content:space-between;"><span>💬 Git Comment (@提及)</span><span class="tok tok-iter">Iter 3</span></button>
+              <button class="trigger-mode" data-mode="ci-finished" style="display:flex;justify-content:space-between;"><span>🔄 CI/CD 完成</span><span class="tok tok-iter">Iter 4</span></button>
+              <button class="trigger-mode" data-mode="email" style="display:flex;justify-content:space-between;"><span>📧 收到邮件</span><span class="tok tok-iter">Iter 4</span></button>
+              <button class="trigger-mode" data-mode="lark-msg" style="display:flex;justify-content:space-between;"><span>💬 飞书消息</span><span class="tok tok-iter">Iter 4</span></button>
+              <button class="trigger-mode" data-mode="slack-msg" style="display:flex;justify-content:space-between;"><span>💬 Slack 消息</span><span class="tok tok-iter">Iter 4</span></button>
+              <button class="trigger-mode" data-mode="discord-msg" style="display:flex;justify-content:space-between;"><span>💬 Discord 消息</span><span class="tok tok-iter">Iter 4</span></button>
+              <button class="trigger-mode" data-mode="file-watch" style="display:flex;justify-content:space-between;"><span>👁 File Watch</span><span class="tok tok-iter">Iter 4</span></button>
+              <button class="trigger-mode" data-mode="boot" style="display:flex;justify-content:space-between;"><span>🚀 Boot(开机)</span><span class="tok tok-iter">Iter 5</span></button>
+              <button class="trigger-mode" data-mode="upstream-loop" style="display:flex;justify-content:space-between;"><span>🔗 上游 Loop 完成</span><span class="tok tok-iter">Iter 5</span></button>
+            </div>
+          </details>
 
           <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-manual">
             <p class="text-[12px] text-muted" data-i18n="trigger_manual_desc">仅在 UI 点击「立即运行」时触发一次。</p>
@@ -374,6 +386,184 @@
                 <a href="https://crontab.guru" target="_blank" class="ml-auto" style="color:var(--accent)">crontab.guru ↗</a>
               </div>
             </div>
+          </div>
+
+          <!-- Webhook 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-webhook">
+            <p class="text-[12px] mb-2">外部系统通过 HTTP POST 触发</p>
+            <div class="flex items-center gap-2 mb-2">
+              <code class="text-[11px] mono px-2 py-1 rounded surface">POST /triggers/:blueprintId</code>
+            </div>
+            <div class="row"><label>Secret</label><input type="password" placeholder="可选,用于签名验证" class="mono text-[11px]"/></div>
+            <p class="text-dim text-[11px] mt-2">⚠ 需要公网可达或内网穿透</p>
+          </div>
+
+          <!-- Git Push 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-git-push">
+            <p class="text-[12px] mb-2">GitHub/GitLab push 事件触发</p>
+            <div class="row"><label>Repo URL</label><input placeholder="https://github.com/oh-summy/Loop-Cockpit" class="mono text-[11px]"/></div>
+            <div class="row"><label>Branch 过滤</label><input placeholder="main (正则,空=全部)" class="text-[12px]"/></div>
+            <p class="text-dim text-[11px] mt-2">需要在 GitHub 设置 Webhook URL → <code>http://your-host:port/triggers/github</code></p>
+          </div>
+
+          <!-- Git PR 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-git-pr">
+            <p class="text-[12px] mb-2">Pull Request 事件触发</p>
+            <div class="row"><label>Repo URL</label><input placeholder="https://github.com/oh-summy/Loop-Cockpit" class="mono text-[11px]"/></div>
+            <div class="row"><label>事件</label>
+              <div class="flex gap-3 text-[12px]">
+                <label><input type="checkbox" checked/> opened</label>
+                <label><input type="checkbox" checked/> synchronize</label>
+                <label><input type="checkbox"/> closed</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Git Issue 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-git-issue">
+            <p class="text-[12px] mb-2">Issue 事件触发</p>
+            <div class="row"><label>Repo URL</label><input placeholder="https://github.com/oh-summy/Loop-Cockpit" class="mono text-[11px]"/></div>
+            <div class="row"><label>Label 过滤</label><input placeholder="bug (逗号分隔,空=全部)" class="text-[12px]"/></div>
+            <div class="row"><label>事件</label>
+              <div class="flex gap-3 text-[12px]">
+                <label><input type="checkbox" checked/> opened</label>
+                <label><input type="checkbox"/> labeled</label>
+                <label><input type="checkbox"/> closed</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Git Comment 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-git-comment">
+            <p class="text-[12px] mb-2">PR/Issue 评论触发(可过滤 @提及)</p>
+            <div class="row"><label>Repo URL</label><input placeholder="https://github.com/oh-summy/Loop-Cockpit" class="mono text-[11px]"/></div>
+            <div class="row"><label>@提及关键词</label><input placeholder="@loop (空=所有评论)" class="text-[12px]"/></div>
+          </div>
+
+          <!-- CI/CD 完成 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-ci-finished">
+            <p class="text-[12px] mb-2">CI 流水线完成后触发</p>
+            <div class="row"><label>Provider</label>
+              <select class="text-[12px]">
+                <option>GitHub Actions</option>
+                <option>GitLab CI</option>
+                <option>Jenkins</option>
+              </select>
+            </div>
+            <div class="row"><label>Branch</label><input placeholder="main (正则)" class="text-[12px]"/></div>
+            <div class="row"><label>触发条件</label>
+              <div class="flex gap-3 text-[12px]">
+                <label><input type="checkbox" checked/> 成功</label>
+                <label><input type="checkbox"/> 失败</label>
+              </div>
+            </div>
+            <p class="text-dim text-[11px] mt-2">在 CI 配置中添加一步: POST webhook 到 <code>/triggers/ci/:blueprintId</code></p>
+          </div>
+
+          <!-- Email 收到 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-email">
+            <p class="text-[12px] mb-2">收到邮件时触发 Loop</p>
+            <div class="row"><label>方式</label>
+              <select class="text-[12px]">
+                <option>IMAP 轮询 (Gmail/Outlook)</option>
+                <option>Email Webhook (Resend/SendGrid 入站)</option>
+              </select>
+            </div>
+            <details class="mt-2">
+              <summary class="text-[11px] text-dim cursor-pointer">IMAP 配置</summary>
+              <div class="row"><label>SMTP 服务器</label><input placeholder="imap.gmail.com:993" class="mono text-[11px]"/></div>
+              <div class="row"><label>邮箱账号</label><input placeholder="you@gmail.com" class="text-[12px]"/></div>
+              <div class="row"><label>应用密码</label><input type="password" placeholder="Gmail 应用专用密码" class="text-[12px]"/></div>
+            </details>
+            <details class="mt-2">
+              <summary class="text-[11px] text-dim cursor-pointer">Email Webhook 配置</summary>
+              <div class="row"><label>转发地址</label><input placeholder="your@email.example.com" class="text-[12px]"/></div>
+              <p class="text-dim text-[11px] mt-1">在 Resend/SendGrid 设置入站规则,匹配邮件转发到此地址</p>
+            </details>
+            <div class="row mt-2"><label>发件人过滤</label><input placeholder="*@github.com (正则,空=全部)" class="text-[12px]"/></div>
+            <div class="row"><label>主题过滤</label><input placeholder="[Bug] (正则,空=全部)" class="text-[12px]"/></div>
+            <p class="text-dim text-[11px] mt-2">不需要装 CLI。Loop Cockpit Host 进程自己轮询 IMAP 或收 Webhook。</p>
+          </div>
+
+          <!-- 飞书消息 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-lark-msg">
+            <p class="text-[12px] mb-2">飞书机器人收到消息时触发</p>
+            <div class="row"><label>方式</label>
+              <select class="text-[12px]">
+                <option>Webhook (最简单)</option>
+                <option>飞书 Bot (支持双向对话)</option>
+              </select>
+            </div>
+            <details class="mt-2">
+              <summary class="text-[11px] text-dim cursor-pointer">Webhook 配置</summary>
+              <div class="row"><label>Webhook URL</label><input placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxxxx" class="mono text-[11px]"/></div>
+              <p class="text-dim text-[11px] mt-1">在飞书群 → 群服务 → 自定义机器人 → 复制 Webhook URL</p>
+            </details>
+            <details class="mt-2">
+              <summary class="text-[11px] text-dim cursor-pointer">飞书 Bot 配置</summary>
+              <div class="row"><label>App ID</label><input placeholder="cli_xxxxxxxxx" class="mono text-[11px]"/></div>
+              <div class="row"><label>App Secret</label><input type="password" placeholder="xxxxxxxx" class="mono text-[11px]"/></div>
+              <div class="row"><label>事件订阅 URL</label><input placeholder="https://your-host:port/triggers/lark/events" class="mono text-[11px]"/></div>
+              <p class="text-dim text-[11px] mt-1">需要在飞书开放平台创建应用,配置事件订阅</p>
+            </details>
+            <div class="row mt-2"><label>@提及关键词</label><input placeholder="@loop (空=所有消息)" class="text-[12px]"/></div>
+            <div class="row"><label>群过滤</label><input placeholder="群名或群 ID (空=全部)" class="text-[12px]"/></div>
+            <p class="text-dim text-[11px] mt-2">不需要装 CLI。Loop Cockpit Host 进程自己收 Webhook 或飞书事件推送。</p>
+          </div>
+
+          <!-- Slack 消息 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-slack-msg">
+            <p class="text-[12px] mb-2">Slack Bot 收到消息时触发</p>
+            <div class="row"><label>Bot Token</label><input placeholder="xoxb-xxxxxx" class="mono text-[11px]"/></div>
+            <div class="row"><label>Channel 过滤</label><input placeholder="#dev (空=全部)" class="text-[12px]"/></div>
+            <div class="row"><label>@提及关键词</label><input placeholder="@loop (空=所有消息)" class="text-[12px]"/></div>
+            <p class="text-dim text-[11px] mt-2">需要在 Slack 创建 App,配置 Socket Mode 或 Webhook URL 指向 Loop Cockpit。</p>
+          </div>
+
+          <!-- Discord 消息 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-discord-msg">
+            <p class="text-[12px] mb-2">Discord Bot 收到消息时触发</p>
+            <div class="row"><label>Bot Token</label><input placeholder="MTI...xxxxx" class="mono text-[11px]"/></div>
+            <div class="row"><label>Channel 过滤</label><input placeholder="#general (空=全部)" class="text-[12px]"/></div>
+            <p class="text-dim text-[11px] mt-2">需要在 Discord Developer Portal 创建 Bot,配置 Gateway Intents。</p>
+          </div>
+
+          <!-- File Watch 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-file-watch">
+            <p class="text-[12px] mb-2">监听文件/目录变化触发</p>
+            <div class="row"><label>路径</label><input placeholder="/path/to/watch" class="mono text-[11px]"/></div>
+            <div class="row"><label>事件</label>
+              <div class="flex gap-3 text-[12px]">
+                <label><input type="checkbox" checked/> create</label>
+                <label><input type="checkbox" checked/> modify</label>
+                <label><input type="checkbox"/> delete</label>
+              </div>
+            </div>
+            <div class="row"><label>匹配模式</label><input placeholder="*.ts,*.md (glob,空=全部)" class="mono text-[11px]"/></div>
+            <p class="text-dim text-[11px] mt-2">Loop Cockpit Host 用 inotify (Linux) / fsevents (macOS) 监听。</p>
+          </div>
+
+          <!-- Boot 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-boot">
+            <p class="text-[12px] mb-2">Host 启动时自动触发(适合 health check Loop)</p>
+            <div class="row"><label>延迟(秒)</label>
+              <div class="stepper" data-step="5"><button data-dir="-1">−</button><input value="30"/><button data-dir="+1">+</button></div>
+            </div>
+            <p class="text-dim text-[11px] mt-2">需要在系统级配置开机自启(systemd / launchd / crontab @reboot)。</p>
+          </div>
+
+          <!-- 上游 Loop 完成 面板 -->
+          <div class="mt-3 surface-2 border-1 rounded p-3 hidden" id="trigger-panel-upstream-loop">
+            <p class="text-[12px] mb-2">另一个 Loop 完成后触发(跨 Loop 链)</p>
+            <div class="row"><label>上游 Loop</label><select class="text-[12px]"><option>[选择 Blueprint]</option></select></div>
+            <div class="row"><label>条件</label>
+              <select class="text-[12px]">
+                <option>上游成功</option>
+                <option>上游失败</option>
+                <option>任意结果</option>
+              </select>
+            </div>
+            <p class="text-dim text-[11px] mt-2">上游 Loop 的产物(文件/状态)会自动传递给本 Loop。</p>
           </div>
         </div>
       </div>
@@ -933,7 +1123,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
       <div class="row">
         <label data-i18n="deny_budget_tokens_num">Token 数量上限</label>
         <div class="flex items-center gap-2">
-          <div class="stepper" data-step="1000"><button data-dir="-1">−</button><input value="" placeholder="(空 = 不限)" class="w-20"/><button data-dir="+1">+</button></div>
+          <div class="stepper" data-step="1000"><button data-dir="-1">−</button><input value="" placeholder="不限制" class="w-20"/><button data-dir="+1">+</button></div>
           <select class="px-2 py-1 rounded text-[12px]"><option>K</option><option>M</option></select>
           <span class="text-dim text-[11px]" data-i18n="deny_warn_prefix">警告阈值 <input type="text" value="80" class="w-10 px-1 py-0.5 rounded text-center mono" style="font-size:11px"/>%</span>
         </div>
@@ -942,7 +1132,7 @@ Round: {{run.round}} · Cost: ${{run.cost}}
       <div class="row">
         <label data-i18n="deny_budget_tokens_usd">花费上限($)</label>
         <div class="flex items-center gap-2">
-          <div class="stepper" data-step="0.5"><button data-dir="-1">−</button><input value="" placeholder="(空 = 不限)" class="w-20"/><button data-dir="+1">+</button></div>
+          <div class="stepper" data-step="0.5"><button data-dir="-1">−</button><input value="" placeholder="不限制" class="w-20"/><button data-dir="+1">+</button></div>
           <span class="text-dim text-[11px]" data-i18n="deny_warn_prefix_usd">警告阈值 <input type="text" value="80" class="w-10 px-1 py-0.5 rounded text-center mono" style="font-size:11px"/>%</span>
         </div>
       </div>
@@ -1027,7 +1217,8 @@ Round: {{run.round}} · Cost: ${{run.cost}}
     <span>·</span>
     <a href="https://github.com/oh-summy/Loop-Cockpit" target="_blank" class="hover:underline">GitHub</a>
     <a href="https://github.com/oh-summy/Loop-Cockpit/issues" target="_blank" class="hover:underline">Issues</a>
-    <span class="ml-auto">MIT · Local-first · No cloud</span>
+
+
   </div>
 </footer>
 
@@ -1070,6 +1261,7 @@ const I18N = {
     sec_trigger_desc: '什么时候启动 · 什么时候结束 · 用哪个 AI',
     trigger_mode: '触发方式',
     trigger_manual: '手动', trigger_once: '一次性', trigger_schedule: '定时', trigger_webhook: 'Webhook',
+    trigger_more: '更多触发器 (Iter 3+)',
     trigger_once_at: '触发时刻', trigger_once_soonest: '下一个整点', trigger_once_tomorrow: '明天 09:00',
     trigger_once_desc: '到点运行一次,完成后 Blueprint 自动 disable',
     trigger_iter_hint: '(Iter 4 上线)',
@@ -1370,9 +1562,22 @@ window.toggleBlock = toggleBlock;
 
 // ============ Trigger 切换 ============
 const triggerPanels = {
-  manual:   document.getElementById('trigger-panel-manual'),
-  once:     document.getElementById('trigger-panel-once'),
-  schedule: document.getElementById('trigger-panel-schedule'),
+  manual:     document.getElementById('trigger-panel-manual'),
+  once:       document.getElementById('trigger-panel-once'),
+  schedule:   document.getElementById('trigger-panel-schedule'),
+  webhook:    document.getElementById('trigger-panel-webhook'),
+  'git-push': document.getElementById('trigger-panel-git-push'),
+  'git-pr':   document.getElementById('trigger-panel-git-pr'),
+  'git-issue': document.getElementById('trigger-panel-git-issue'),
+  'git-comment': document.getElementById('trigger-panel-git-comment'),
+  'ci-finished': document.getElementById('trigger-panel-ci-finished'),
+  email:      document.getElementById('trigger-panel-email'),
+  'lark-msg': document.getElementById('trigger-panel-lark-msg'),
+  'slack-msg': document.getElementById('trigger-panel-slack-msg'),
+  'discord-msg': document.getElementById('trigger-panel-discord-msg'),
+  'file-watch': document.getElementById('trigger-panel-file-watch'),
+  boot:       document.getElementById('trigger-panel-boot'),
+  'upstream-loop': document.getElementById('trigger-panel-upstream-loop'),
 };
 function selectTriggerMode(mode) {
   document.querySelectorAll('.trigger-mode').forEach(b => {
@@ -1386,9 +1591,10 @@ function selectTriggerMode(mode) {
       b.style.color = '#fff';
     }
   });
-  Object.entries(triggerPanels).forEach(([k, el]) => {
-    if (el) el.classList.toggle('hidden', k !== mode);
-  });
+  // Hide all trigger panels first
+  Object.values(triggerPanels).forEach(el => { if (el) el.classList.add('hidden'); });
+  // Show the selected panel
+  if (triggerPanels[mode]) triggerPanels[mode].classList.remove('hidden');
 }
 document.querySelectorAll('.trigger-mode').forEach(b => {
   b.addEventListener('click', () => { if (b.disabled) return; selectTriggerMode(b.dataset.mode); });
@@ -1744,15 +1950,17 @@ function renderMCPs() {
   });
 }
 renderMCPs();
-document.querySelector('[data-action="add-mcp"]')?.addEventListener('click', () => {
-  const name = prompt('MCP server 名称:');
-  if (!name) return;
-  const command = prompt('启动命令(例: npx -y @modelcontextprotocol/server-github):', 'npx -y @modelcontextprotocol/server-xxx');
-  if (command === null) return;
-  const d = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
-  d.push({ name, command: command || '' });
-  localStorage.setItem('lc-mcp-list', JSON.stringify(d));
-  renderMCPs();
+document.querySelectorAll('[data-action="add-mcp"]')?.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = prompt('MCP server 名称:');
+    if (!name) return;
+    const command = prompt('启动命令(例: npx -y @modelcontextprotocol/server-github):', 'npx -y @modelcontextprotocol/server-xxx');
+    if (command === null) return;
+    const d = JSON.parse(localStorage.getItem('lc-mcp-list') || '[]');
+    d.push({ name, command: command || '' });
+    localStorage.setItem('lc-mcp-list', JSON.stringify(d));
+    renderMCPs();
+  });
 });
 
 // ============ Subagent 增删 ============
@@ -1787,16 +1995,18 @@ function renderSubagents() {
   });
 }
 renderSubagents();
-document.querySelector('[data-action="add-subagent"]')?.addEventListener('click', () => {
-  const name = prompt('Subagent 名称:');
-  if (!name) return;
-  const prompt_text = prompt('Subagent system prompt:', '你专门负责 X 任务,使用工具 Y...');
-  if (prompt_text === null) return;
-  const tools = prompt('可用工具(逗号分隔,空=全部):', 'Bash, Read, Grep');
-  const d = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
-  d.push({ name, prompt: prompt_text, tools: tools || '' });
-  localStorage.setItem('lc-subagent-list', JSON.stringify(d));
-  renderSubagents();
+document.querySelectorAll('[data-action="add-subagent"]')?.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const name = prompt('Subagent 名称:');
+    if (!name) return;
+    const prompt_text = prompt('Subagent system prompt:', '你专门负责 X 任务,使用工具 Y...');
+    if (prompt_text === null) return;
+    const tools = prompt('可用工具(逗号分隔,空=全部):', 'Bash, Read, Grep');
+    const d = JSON.parse(localStorage.getItem('lc-subagent-list') || '[]');
+    d.push({ name, prompt: prompt_text, tools: tools || '' });
+    localStorage.setItem('lc-subagent-list', JSON.stringify(d));
+    renderSubagents();
+  });
 });
 </script>
 
