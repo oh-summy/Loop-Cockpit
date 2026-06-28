@@ -312,21 +312,6 @@ Loop Cockpit 对应:
 
 ## 9. 主要来源
 
-- **Loop Engineering**:[Addy Osmani 博客](https://addyosmani.com/blog/loop-engineering),[Peter Steinberger 推文](https://twitter.com/steipete),[Boris Cherny @ Acquired](https://www.productmarketfit.tech/p/stop-prompting-ai-and-start-building)(二手)
-- **Agent 标准定义**:[Simon Willison "tools in a loop"](https://simonwillison.net/2025/Sep/18/agents)
-- **最朴素 Loop**:[Geoffrey Huntley Ralph](https://ghuntley.com/ralph)
-- **Harness 框架**:[Osmani agent-harness-engineering](https://addyosmani.com/blog/agent-harness-engineering)
-- **LangGraph**:[官方 docs](https://docs.langchain.com/oss/python/langgraph/interrupts)
-- **OpenAI Agents SDK**:[runner ref](https://openai.github.io/openai-agents-python/ref/run)
-- **CrewAI**:[docs](https://docs.crewai.com/v1.14.7/en/concepts/tasks)
-- **AutoGen / AG2**:[GroupChat API](https://docs.ag2.ai/latest/docs/api-reference/autogen/GroupChat)
-- **OpenAI Swarm**:[GitHub](https://github.com/openai/swarm)
-- **Claude Code subagent**:[Anthropic docs](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
-- **OpenHermit**:[GitHub](https://github.com/HCF-STUDIOS/openhermit)
-- **GPT Researcher**:[docs](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/langgraph)
-- **Aider**:[edit-formats](https://aider.chat/docs/more/edit-formats.html)
-- **Cognition Don't Build Multi-Agents**:[blog](https://cognition.com/blog/dont-build-multi-agents) + [反转](https://cognition.ai/blog/multi-agents-working)
-
 ---
 
 ## 10. 行动项
