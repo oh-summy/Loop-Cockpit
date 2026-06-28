@@ -2,445 +2,916 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Blueprint 编辑器 · 原型 v3 · Loop Cockpit</title>
+<title>Blueprint · Loop Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   (function(){ const t = localStorage.getItem('lc-theme') || 'dark'; if (t==='dark') document.documentElement.classList.add('dark'); })();
   tailwind.config = { darkMode: 'class' }
 </script>
 <style>
-  :root { --bg:#fff; --surface:#f9fafb; --surface2:#f3f4f6; --border:#e5e7eb; --fg:#111827; --fg-muted:#6b7280; --input-bg:#fff; --accent:#7c5cff; --accent-soft:rgba(124,92,255,0.12); --ok:#10b981; --warn:#f59e0b; --danger:#ef4444; }
-  .dark { --bg:#0a0a0a; --surface:#161616; --surface2:#1f1f1f; --border:#2a2a2a; --fg:#e5e7eb; --fg-muted:#9ca3af; --input-bg:#161616; }
-  body { background:var(--bg); color:var(--fg); font-family:-apple-system,BlinkMacSystemFont,'PingFang SC',sans-serif; transition: background .2s, color .2s; }
-  input, textarea, select { background:var(--input-bg); color:var(--fg); border-color:var(--border); }
-  textarea, input[type=text], select, .mono { font-family: ui-monospace,'SF Mono',Menlo,monospace; }
+  :root {
+    --bg: #fafafa;
+    --surface: #f3f3f4;
+    --surface-2: #ffffff;
+    --border: #e6e6e8;
+    --border-strong: #d4d4d8;
+    --fg: #0a0a0b;
+    --fg-muted: #71717a;
+    --fg-dim: #a1a1aa;
+    --accent: #7c5cff;
+    --accent-soft: rgba(124, 92, 255, 0.10);
+    --accent-hover: #6d4ce6;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --shadow: 0 1px 0 rgba(0,0,0,0.04);
+  }
+  .dark {
+    --bg: #0a0a0b;
+    --surface: #141416;
+    --surface-2: #1c1c20;
+    --border: #202023;
+    --border-strong: #2a2a2e;
+    --fg: #e4e4e7;
+    --fg-muted: #71717a;
+    --fg-dim: #52525b;
+    --accent-soft: rgba(124, 92, 255, 0.15);
+    --shadow: 0 1px 0 rgba(0,0,0,0.4);
+  }
+
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; font-size: 13px; line-height: 1.5; transition: background 0.15s, color 0.15s; }
+
+  /* monospace */
+  .mono, code, input[type="text"].mono, textarea.mono, .mono *, .mono-input { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace; font-feature-settings: 'liga' 0; }
+
+  /* form controls */
+  input, textarea, select { background: var(--surface-2); color: var(--fg); border: 1px solid var(--border); font-size: 13px; outline: none; transition: border-color 0.15s; }
+  input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+  input::placeholder, textarea::placeholder { color: var(--fg-dim); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  /* surfaces */
   .surface { background: var(--surface); }
-  .surface2 { background: var(--surface2); }
-  .border-default { border-color: var(--border); }
+  .surface-2 { background: var(--surface-2); }
+  .border-1 { border: 1px solid var(--border); }
+  .border-t-1 { border-top: 1px solid var(--border); }
+  .border-b-1 { border-bottom: 1px solid var(--border); }
   .text-muted { color: var(--fg-muted); }
-  .badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; background:var(--surface2); }
+  .text-dim { color: var(--fg-dim); }
 
-  /* generic */
-  .btn { padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--input-bg); color:var(--fg); cursor:pointer; font-size:13px; transition:all .15s; }
-  .btn:hover { border-color: var(--accent); }
-  .btn.primary { background: var(--accent); color:#fff; border-color: var(--accent); }
-  .btn.primary:hover { opacity:.9; }
-  .btn.ghost { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
-  .btn.small { padding:3px 8px; font-size:12px; }
-  .btn.icon { padding:4px 8px; line-height:1; }
+  /* prompt prefix for command fields */
+  .prompt-wrap { position: relative; }
+  .prompt-wrap::before { content: '$'; position: absolute; left: 10px; top: 9px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; font-size: 13px; z-index: 1; pointer-events: none; }
+  .prompt-wrap textarea, .prompt-wrap input { padding-left: 26px; }
+  .path-wrap { position: relative; }
+  .path-wrap::before { content: '~'; position: absolute; left: 10px; top: 9px; color: var(--fg-dim); font-family: 'JetBrains Mono', monospace; font-size: 14px; z-index: 1; pointer-events: none; }
+  .path-wrap input { padding-left: 22px; padding-right: 90px; }
 
-  /* tooltips */
-  .tip { position:relative; display:inline-flex; align-items:center; gap:4px; cursor:help; color:var(--fg-muted); }
-  .tip::after { content: attr(data-tip); position:absolute; bottom:calc(100% + 8px); left:0; min-width:240px; max-width:340px; padding:8px 10px; background:#000; color:#fff; border-radius:6px; font-size:11px; line-height:1.5; opacity:0; pointer-events:none; transition:opacity .15s; z-index:30; white-space:normal; box-shadow:0 4px 12px rgba(0,0,0,.2); }
-  .tip:hover::after { opacity:1; }
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.12s; line-height: 1.2; }
+  .btn:hover { border-color: var(--border-strong); background: var(--surface); }
+  .btn:focus-visible { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
+  .btn.ghost:hover { background: var(--surface); color: var(--fg); }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn.xsmall { padding: 2px 6px; font-size: 11px; }
+  .btn.icon { padding: 5px 8px; }
+  .btn.danger:hover { color: var(--danger); border-color: var(--danger); }
 
-  /* day/time chips */
-  .week-btn { padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--input-bg); color:var(--fg); cursor:pointer; font-size:13px; }
-  .week-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .day-btn { width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:var(--input-bg); color:var(--fg); cursor:pointer; font-size:13px; }
-  .day-btn:hover { border-color:var(--accent); }
-  .day-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .day-btn.warn { position:relative; }
-  .day-btn.warn::after { content:'⚠'; position:absolute; top:-2px; right:-2px; font-size:9px; color:var(--warn); }
-  .chip { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--accent-soft); color:var(--accent); font-family:ui-monospace,monospace; font-size:12px; }
-  .chip .x { cursor:pointer; opacity:.6; }
-  .chip .x:hover { opacity:1; color:var(--danger); }
-  .chip-preset { padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--input-bg); color:var(--fg); cursor:pointer; font-size:12px; font-family:ui-monospace,monospace; }
-  .chip-preset:hover { border-color:var(--accent); }
+  /* number stepper */
+  .stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+  .stepper button { width: 28px; background: transparent; border: none; color: var(--fg-muted); cursor: pointer; font-size: 14px; transition: all 0.1s; }
+  .stepper button:hover { background: var(--surface); color: var(--fg); }
+  .stepper input { width: 48px; text-align: center; border: none; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 6px 4px; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .stepper.compact input { width: 36px; }
 
-  /* sched / mode tabs */
-  .seg { display:flex; gap:2px; padding:3px; border-radius:8px; background:var(--surface2); }
-  .seg button { flex:1; padding:6px 10px; border:none; background:transparent; color:var(--fg-muted); cursor:pointer; border-radius:6px; font-size:13px; transition: all .15s; }
-  .seg button.active { background:var(--accent); color:#fff; }
-  .seg button:disabled { opacity:.4; cursor:not-allowed; }
+  /* segmented control (tabs) */
+  .seg { display: inline-flex; padding: 2px; background: var(--surface); border-radius: 6px; gap: 1px; border: 1px solid var(--border); }
+  .seg button { padding: 4px 12px; border-radius: 4px; border: none; background: transparent; color: var(--fg-muted); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.12s; }
+  .seg button.active { background: var(--accent); color: #fff; }
+  .seg button:not(.active):hover { background: var(--surface-2); color: var(--fg); }
+  .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* time picker */
-  .time-input { display:inline-flex; align-items:center; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--input-bg); }
-  .time-input button { padding:6px 8px; background:transparent; border:none; color:var(--fg); cursor:pointer; font-size:12px; }
-  .time-input button:hover { background:var(--surface2); }
-  .time-input input { width:36px; text-align:center; border:none; background:transparent; padding:6px 2px; font-family:ui-monospace,monospace; outline:none; font-size:13px; }
-  .time-input .sep { padding:0 2px; color:var(--fg-muted); }
+  /* chips */
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; }
+  .chip .x { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; padding-left: 2px; }
+  .chip .x:hover { opacity: 1; color: var(--danger); }
+  .chip-preset { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--surface-2); color: var(--fg); border: 1px solid var(--border); cursor: pointer; transition: all 0.12s; }
+  .chip-preset:hover { border-color: var(--accent); color: var(--accent); }
+  .chip-preset.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-  details > summary { list-style:none; cursor:pointer; }
-  details > summary::-webkit-details-marker { display:none; }
+  /* checkpoint chips (勾选追加要点) */
+  .cp-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 6px; border-radius: 4px; font-size: 12px; background: var(--surface-2); color: var(--fg-muted); border: 1px solid var(--border); cursor: pointer; transition: all 0.12s; }
+  .cp-chip:hover { border-color: var(--border-strong); color: var(--fg); }
+  .cp-chip.checked { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .cp-chip .box { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; border-radius: 2px; border: 1px solid currentColor; opacity: 0.5; font-size: 8px; }
+  .cp-chip.checked .box { background: var(--accent); border-color: var(--accent); color: #fff; opacity: 1; }
+
+  /* day grid */
+  .day-btn { width: 32px; height: 32px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 12px; font-family: 'JetBrains Mono', monospace; transition: all 0.1s; position: relative; }
+  .day-btn:hover { border-color: var(--accent); }
+  .day-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .day-btn.warn::after { content: '!'; position: absolute; top: -3px; right: -3px; font-size: 10px; color: var(--warn); font-weight: 600; }
+
+  .week-btn { padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 12px; transition: all 0.1s; }
+  .week-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* time stepper (HH:MM) */
+  .time-stepper { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+  .time-stepper button { width: 22px; background: transparent; border: none; color: var(--fg-muted); cursor: pointer; font-size: 13px; transition: all 0.1s; }
+  .time-stepper button:hover { background: var(--surface); color: var(--fg); }
+  .time-stepper input { width: 28px; text-align: center; border: none; padding: 5px 2px; background: transparent; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+  .time-stepper .sep { display: flex; align-items: center; color: var(--fg-dim); }
+
+  /* tooltip */
+  .tip { position: relative; display: inline-flex; align-items: center; gap: 4px; cursor: help; color: var(--fg-dim); font-size: 11px; }
+  .tip:hover { color: var(--fg-muted); }
+  .tip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 220px; max-width: 320px; padding: 6px 10px; background: var(--fg); color: var(--bg); border-radius: 4px; font-size: 11px; line-height: 1.5; opacity: 0; pointer-events: none; transition: opacity 0.15s; z-index: 50; white-space: normal; box-shadow: 0 4px 16px rgba(0,0,0,0.2); font-family: 'Inter', sans-serif; }
+  .tip:hover::after { opacity: 1; }
+
+  /* token */
+  .tok { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.02em; text-transform: lowercase; }
+  .tok-ok { background: rgba(16, 185, 129, 0.15); color: var(--ok); }
+  .tok-warn { background: rgba(245, 158, 11, 0.15); color: var(--warn); }
+  .tok-err { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+  .tok-accent { background: var(--accent-soft); color: var(--accent); }
+
+  /* section header */
+  .sec-h { display: flex; align-items: center; gap: 10px; padding-top: 16px; padding-bottom: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; color: var(--fg-muted); }
+  .sec-h::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* form rows */
+  .row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; align-items: start; padding: 8px 0; }
+  .row > label { padding-top: 7px; color: var(--fg-muted); font-size: 12px; font-weight: 500; }
+  .row > div { min-width: 0; }
+
+  /* details (advanced) */
+  details > summary { list-style: none; cursor: pointer; padding: 8px 0; color: var(--fg-muted); font-size: 12px; }
+  details > summary:hover { color: var(--fg); }
+  details > summary::before { content: '▸ '; display: inline-block; transition: transform 0.15s; }
+  details[open] > summary::before { transform: rotate(90deg); }
+
+  /* dropdown popover */
+  .popover { position: absolute; top: calc(100% + 4px); left: 0; min-width: 180px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); z-index: 100; padding: 4px; }
+  .popover-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--fg); transition: background 0.1s; }
+  .popover-item:hover { background: var(--surface); }
+  .popover-item.muted { color: var(--fg-muted); font-size: 11px; padding-top: 4px; padding-bottom: 2px; }
+  .popover-divider { height: 1px; background: var(--border); margin: 4px -4px; }
+
+  /* dropdown trigger */
+  .dropdown-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 13px; transition: all 0.12s; }
+  .dropdown-btn:hover { border-color: var(--border-strong); }
+  .dropdown-btn::after { content: '▾'; color: var(--fg-dim); margin-left: 4px; font-size: 10px; }
+
+  /* keyboard hint */
+  kbd { display: inline-flex; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1.4; box-shadow: 0 1px 0 var(--border); }
+
+  /* preview sentence */
+  .preview-sentence { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--fg); padding: 8px 12px; background: var(--surface); border-left: 2px solid var(--accent); border-radius: 0 4px 4px 0; }
+
+  /* modal backdrop */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; min-width: 480px; max-width: 600px; box-shadow: 0 16px 48px rgba(0,0,0,0.4); }
+  .modal h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 
-<!-- 顶栏 -->
-<header class="border-b border-default surface">
-  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-4">
-    <span class="font-bold text-lg" style="color:var(--accent)">🚀 Loop Cockpit</span>
-    <nav class="flex gap-4 text-sm text-muted">
-      <a href="#">Dashboard</a>
-      <a style="color:var(--fg)" href="#">Blueprints</a>
-      <a href="#">Runs</a>
+<!-- ===== Navbar ===== -->
+<header class="border-b-1 surface">
+  <div class="max-w-[1100px] mx-auto px-6 h-12 flex items-center gap-6">
+    <span class="font-semibold flex items-center gap-1.5 text-[14px]">
+      <span style="color:var(--accent)" class="mono">▸</span>
+      Loop Cockpit
+      <span class="tok tok-accent ml-2">v0.1</span>
+    </span>
+    <nav class="flex gap-1 text-[12px] text-muted">
+      <a href="#" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Dashboard</a>
+      <a href="#" class="px-2 py-1 rounded surface" style="color:var(--fg)">Blueprints</a>
+      <a href="#" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Runs</a>
     </nav>
-    <div class="ml-auto flex items-center gap-3 text-xs text-muted">
-      <button id="theme-toggle" class="btn icon flex items-center gap-1.5">
-        <span id="theme-icon">🌙</span><span id="theme-label">暗色</span>
+    <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
+      <button id="theme-toggle" class="btn ghost xsmall">
+        <span id="theme-icon">🌙</span><span id="theme-label">dark</span>
       </button>
-      <span>@oh-summy</span>
+      <span class="mono">@oh-summy</span>
     </div>
   </div>
 </header>
 
-<main class="max-w-6xl mx-auto px-6 py-8">
+<!-- ===== Main ===== -->
+<main class="max-w-[1100px] mx-auto px-6 py-8">
 
-  <div class="flex items-baseline gap-3 mb-2">
-    <h1 class="text-2xl font-bold">创建 Blueprint</h1>
-    <span class="badge">原型 v3</span>
+  <!-- Title row -->
+  <div class="flex items-baseline justify-between mb-6">
+    <h1 class="text-[18px] font-semibold">Create Blueprint</h1>
+    <div class="flex items-center gap-2">
+      <button class="btn">Cancel</button>
+      <button class="btn">Save</button>
+      <button class="btn primary">Save &amp; Run</button>
+    </div>
   </div>
-  <p class="text-muted text-sm mb-8">左 = 核心定义,右 = 执行配置。鼠标悬停 ⓘ 看字段解释。</p>
 
-  <div class="grid grid-cols-2 gap-6">
-    <!-- ============= 左:核心定义 ============= -->
-    <div class="space-y-5">
-      <div class="text-xs uppercase tracking-wider" style="color:var(--accent)">核心定义</div>
-
-      <div>
-        <label class="block text-sm font-medium mb-2">名称 <span style="color:var(--danger)">*</span></label>
-        <input type="text" value="daily-lint" class="w-full px-3 py-2 rounded border border-default"/>
-      </div>
-
-      <!-- 类型(多选,6类) -->
-      <div>
-        <label class="block text-sm font-medium mb-2">
-          类型
-          <span class="tip text-xs ml-1" data-tip="给 Loop 分类。用于:1) 列表筛选;2) Memory 模块按类学习;3) 通知卡片显示对应 emoji。可多选。">ⓘ</span>
-          <span class="text-muted text-xs ml-2">可多选</span>
-        </label>
-        <div id="type-chips" class="flex flex-wrap gap-2"></div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-2">
-          目标 <span style="color:var(--danger)">*</span>
-          <span class="tip text-xs ml-1" data-tip="用自然语言描述要达成什么。会注入到 Agent 的 system prompt。">ⓘ</span>
-        </label>
-        <textarea rows="4" class="w-full px-3 py-2 rounded border border-default">让 main 分支保持 lint + test + build 全绿。失败时自动 retry 3 次。</textarea>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-2 flex items-center justify-between">
-          <span>
-            完成判定 <span style="color:var(--danger)">*</span>
-            <span class="tip text-xs ml-1" data-tip="可机器执行的 shell 命令。退出码 0 = 通过。Loop 会反复跑 Agent 直到这个命令通过(或撞重试上限)。">ⓘ</span>
-          </span>
-          <button class="btn ghost small">🧪 试跑</button>
-        </label>
-        <textarea rows="3" class="w-full px-3 py-2 rounded border border-default mono text-sm">pnpm lint &amp;&amp; pnpm test &amp;&amp; pnpm build</textarea>
-        <p class="text-muted text-xs mt-1">D1.3 · 试跑不启 Agent,只验证命令</p>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-2">项目路径</label>
-        <input type="text" value="/Users/rocky/project/Loop-Cockpit" class="w-full px-3 py-2 rounded border border-default mono text-sm"/>
+  <!-- ===== Type + Template ===== -->
+  <div class="flex items-center gap-3 mb-4">
+    <span class="text-muted text-[12px]">Type</span>
+    <div class="relative">
+      <button class="dropdown-btn" id="type-btn">
+        <span id="type-label">🔍 定期检查</span>
+      </button>
+      <div class="popover hidden" id="type-pop" style="min-width:200px;">
+        <div data-type="bug" class="popover-item">🐛 Bug 修复</div>
+        <div data-type="refactor" class="popover-item">🔧 重构</div>
+        <div data-type="test" class="popover-item">🧪 测试</div>
+        <div data-type="docs" class="popover-item">📝 文档</div>
+        <div data-type="check" class="popover-item">🔍 定期检查</div>
+        <div data-type="other" class="popover-item">⚙️ 其他</div>
       </div>
     </div>
 
-    <!-- ============= 右:执行配置 ============= -->
-    <div class="space-y-5">
-      <div class="text-xs uppercase tracking-wider" style="color:var(--ok)">执行配置</div>
+    <span class="text-dim">·</span>
 
-      <div>
-        <label class="block text-sm font-medium mb-2">
-          Agent / 模型
-          <span class="tip text-xs ml-1" data-tip="从本地已安装的 Coding Agent 读取。下方模型列表 = 本地 claude CLI auth 后可用的模型。">ⓘ</span>
-        </label>
-        <div class="grid grid-cols-2 gap-2">
-          <select class="px-3 py-2 rounded border border-default">
-            <option>Claude Code</option>
-            <option disabled>OpenCode (规划中)</option>
-            <option disabled>Kimi Code (规划中)</option>
-          </select>
-          <select class="px-3 py-2 rounded border border-default">
-            <option>Sonnet 4.6 (本机默认)</option>
-            <option>Opus 4.8</option>
-            <option>Haiku 4.5</option>
-          </select>
+    <span class="text-muted text-[12px]">Template</span>
+    <div class="relative">
+      <button class="dropdown-btn" id="tpl-btn">
+        <span id="tpl-label">基础版</span>
+      </button>
+      <div class="popover hidden" id="tpl-pop">
+        <div class="popover-item muted">系统内置</div>
+        <div data-tpl="builtin" class="popover-item">基础版</div>
+        <div class="popover-divider"></div>
+        <div class="popover-item muted">我的模板</div>
+        <div id="user-tpl-list">
+          <div class="popover-item" style="color:var(--fg-dim)">(暂无)</div>
         </div>
-        <p class="text-muted text-xs mt-1">读取自 `~/.claude/config.json`</p>
+        <div class="popover-divider"></div>
+        <div data-tpl="blank" class="popover-item" style="color:var(--fg-muted)">+ 空白</div>
       </div>
+    </div>
 
-      <!-- 启动方式 -->
+    <span class="ml-auto text-dim text-[11px] mono">
+      <kbd>S</kbd> save · <kbd>Cmd+Enter</kbd> save &amp; run
+    </span>
+  </div>
+
+  <!-- ===== Core ===== -->
+  <div class="sec-h"><span>Core</span></div>
+
+  <div class="row">
+    <label>Name</label>
+    <div><input type="text" value="daily-lint" class="w-full px-3 py-1.5 rounded mono"/></div>
+  </div>
+
+  <div class="row">
+    <label>
+      Goal
+      <span class="tip ml-1" data-tip="自然语言目标。注入到 Agent 的 system prompt 第一行。">ⓘ</span>
+    </label>
+    <div>
+      <textarea id="goal-text" rows="3" class="w-full px-3 py-2 rounded">保持 main 分支健康。</textarea>
+      <div class="mt-2 flex items-center gap-2 flex-wrap">
+        <span class="text-dim text-[11px]">💡 加入要点:</span>
+        <div id="goal-cp" class="flex gap-1.5 flex-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>
+      Done
+      <span class="tip ml-1" data-tip="可机器执行的 shell 命令,退出码 0 = 通过。">ⓘ</span>
+    </label>
+    <div>
+      <div class="prompt-wrap">
+        <textarea id="done-text" rows="2" class="w-full px-3 py-2 rounded mono">pnpm lint &amp;&amp; pnpm test &amp;&amp; pnpm build</textarea>
+      </div>
+      <div class="mt-2 flex items-center gap-2 flex-wrap">
+        <span class="text-dim text-[11px]">💡 加入校验:</span>
+        <div id="done-cp" class="flex gap-1.5 flex-wrap"></div>
+        <button class="btn ghost xsmall ml-auto">🧪 Dry run</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>Path</label>
+    <div>
+      <div class="path-wrap relative">
+        <input type="text" id="path-input" value="/Users/rocky/project/Loop-Cockpit" class="w-full px-3 py-1.5 rounded mono"/>
+        <button id="browse-btn" class="btn xsmall absolute right-1.5 top-1/2 -translate-y-1/2">📁 Browse</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Trigger ===== -->
+  <div class="sec-h"><span>Trigger</span></div>
+
+  <div class="row">
+    <label>Mode</label>
+    <div>
+      <div class="seg">
+        <button class="mode-tab active" data-mode="manual">Manual</button>
+        <button class="mode-tab" data-mode="schedule">Schedule</button>
+        <button class="mode-tab" data-mode="webhook" disabled>Webhook <span class="text-dim ml-1">Iter 4</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual panel -->
+  <div id="mode-manual" class="mode-panel">
+    <div class="row">
+      <label></label>
+      <div class="text-[12px] text-muted">
+        仅在 UI 点击 <span class="tok tok-accent">Run now</span> 触发一次。
+        <div class="text-dim text-[11px] mt-1.5">配合 <span class="mono">max retries &gt; 0</span> 时仍是 Loop:Agent 失败 → 自动 retry → 直到通过 Done。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Schedule panel -->
+  <div id="mode-schedule" class="mode-panel hidden">
+
+    <div class="row">
+      <label>Frequency</label>
       <div>
-        <label class="block text-sm font-medium mb-3">
-          启动方式
-          <span class="tip text-xs ml-1" data-tip="Manual = UI 点 Run now 触发;定时 = Cron 表达式 / 可视化配置;Webhook = 外部系统 POST 触发(Iter 4)。">ⓘ</span>
-        </label>
-
-        <div class="seg mb-3">
-          <button class="mode-tab active" data-mode="manual">手动</button>
-          <button class="mode-tab" data-mode="schedule">定时</button>
-          <button class="mode-tab" data-mode="webhook" disabled>Webhook <span class="text-xs opacity-60">(Iter 4)</span></button>
+        <div class="seg">
+          <button class="sched-tab active" data-sched="daily">每天</button>
+          <button class="sched-tab" data-sched="weekly">每周</button>
+          <button class="sched-tab" data-sched="monthly">每月</button>
+          <button class="sched-tab" data-sched="interval">每 N 天/周</button>
+          <button class="sched-tab" data-sched="cron">Cron</button>
         </div>
+      </div>
+    </div>
 
-        <!-- 手动 -->
-        <div id="mode-manual" class="mode-panel surface rounded-lg p-4 border border-default">
-          <p class="text-sm">仅在 UI 点击 <span style="font-weight:500">Run now</span> 触发一次。</p>
-          <p class="text-xs text-muted mt-2">💡 配合 <code class="surface2 px-1 rounded">重试次数 > 0</code> 时仍是 Loop:Agent 失败 → 自动 retry → 直到通过完成判定。</p>
+    <!-- Daily -->
+    <div id="sched-daily" class="sched-panel">
+      <div class="row">
+        <label>Times</label>
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-dim text-[11px]">添加:</span>
+            <div id="picker-daily"></div>
+            <button class="btn small" data-add-to="daily">+ Add</button>
+            <span class="text-dim text-[11px] ml-2">快捷:</span>
+            <button class="chip-preset" data-quick="daily" data-time="00:00">0:00</button>
+            <button class="chip-preset" data-quick="daily" data-time="08:00">8:00</button>
+            <button class="chip-preset" data-quick="daily" data-time="12:00">12:00</button>
+            <button class="chip-preset" data-quick="daily" data-time="20:00">20:00</button>
+          </div>
+          <div id="list-daily" class="flex flex-wrap gap-1.5 min-h-[28px]"></div>
         </div>
+      </div>
+    </div>
 
-        <!-- 定时 -->
-        <div id="mode-schedule" class="mode-panel surface rounded-lg p-4 border border-default hidden">
-          <div class="seg mb-4" style="background:var(--input-bg);">
-            <button class="sched-tab active" data-sched="daily">每天</button>
-            <button class="sched-tab" data-sched="weekly">每周</button>
-            <button class="sched-tab" data-sched="monthly">每月</button>
-            <button class="sched-tab" data-sched="interval">每 N 天/周</button>
-            <button class="sched-tab" data-sched="advanced">自定义</button>
-          </div>
-
-          <!-- 每天 -->
-          <div id="sched-daily" class="sched-panel">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-xs text-muted w-20">添加时间:</span>
-              <div id="picker-daily"></div>
-              <button class="btn small" data-add-to="daily">+ 添加</button>
-            </div>
-            <div class="text-xs text-muted mb-2 flex items-center gap-2">
-              <span>快捷:</span>
-              <button class="chip-preset" data-quick="daily" data-time="00:00">0 点</button>
-              <button class="chip-preset" data-quick="daily" data-time="04:00">4 点</button>
-              <button class="chip-preset" data-quick="daily" data-time="08:00">8 点</button>
-              <button class="chip-preset" data-quick="daily" data-time="12:00">12 点</button>
-              <button class="chip-preset" data-quick="daily" data-time="16:00">16 点</button>
-              <button class="chip-preset" data-quick="daily" data-time="20:00">20 点</button>
-            </div>
-            <div class="text-xs text-muted mb-1">已选时间(点 × 移除):</div>
-            <div id="list-daily" class="flex flex-wrap gap-2 min-h-[32px]"></div>
-          </div>
-
-          <!-- 每周 -->
-          <div id="sched-weekly" class="sched-panel hidden">
-            <div class="text-xs text-muted mb-2 flex items-center gap-2">
-              <span>星期(可多选):</span>
-              <button class="btn small" data-week-preset="workday">工作日</button>
-              <button class="btn small" data-week-preset="weekend">周末</button>
-              <button class="btn small" data-week-preset="all">每天</button>
-              <button class="btn small" data-week-preset="clear">清空</button>
-            </div>
-            <div id="week-days" class="flex flex-wrap gap-2 mb-4"></div>
-
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-xs text-muted w-20">添加时间:</span>
-              <div id="picker-weekly"></div>
-              <button class="btn small" data-add-to="weekly">+ 添加</button>
-            </div>
-            <div class="text-xs text-muted mb-2 flex items-center gap-2">
-              <span>快捷:</span>
-              <button class="chip-preset" data-quick="weekly" data-time="08:00">8 点</button>
-              <button class="chip-preset" data-quick="weekly" data-time="12:00">12 点</button>
-              <button class="chip-preset" data-quick="weekly" data-time="18:00">18 点</button>
-            </div>
-            <div class="text-xs text-muted mb-1">已选时间:</div>
-            <div id="list-weekly" class="flex flex-wrap gap-2 min-h-[32px]"></div>
-          </div>
-
-          <!-- 每月 -->
-          <div id="sched-monthly" class="sched-panel hidden">
-            <div class="text-xs text-muted mb-2 flex items-center gap-2">
-              <span>日期(可多选,1-31):</span>
-              <button class="btn small" data-month-preset="first">月初(1 号)</button>
-              <button class="btn small" data-month-preset="mid">月中(15 号)</button>
-              <button class="btn small" data-month-preset="end">月末(28 号)</button>
-              <button class="btn small" data-month-preset="clear">清空</button>
-            </div>
-            <div id="month-days" class="grid grid-cols-10 gap-1.5 mb-2"></div>
-            <p class="text-xs text-muted mb-4">⚠ 29-31 号:不存在的月份会跳过(例:2 月 29 / 4-31 号)</p>
-
-            <div class="flex items-center gap-2 mb-3">
-              <span class="text-xs text-muted w-20">添加时间:</span>
-              <div id="picker-monthly"></div>
-              <button class="btn small" data-add-to="monthly">+ 添加</button>
-            </div>
-            <div class="text-xs text-muted mb-1">已选时间:</div>
-            <div id="list-monthly" class="flex flex-wrap gap-2 min-h-[32px]"></div>
-          </div>
-
-          <!-- 每 N 天 / 周 -->
-          <div id="sched-interval" class="sched-panel hidden">
-            <p class="text-xs text-muted mb-3">💡 从 "起始时间" 开始算,每隔 N 个周期触发一次。</p>
-
-            <div class="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <div class="text-xs text-muted mb-1">每隔</div>
-                <div class="flex items-center gap-2">
-                  <button class="btn icon" id="ivl-dec">−</button>
-                  <input type="number" id="ivl-n" value="3" min="1" max="365" class="w-16 px-2 py-1.5 rounded border border-default text-center mono"/>
-                  <button class="btn icon" id="ivl-inc">+</button>
-                  <select id="ivl-unit" class="px-2 py-1.5 rounded border border-default">
-                    <option value="day">天</option>
-                    <option value="week">周</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <div class="text-xs text-muted mb-1">触发时间</div>
-                <div id="picker-interval"></div>
-              </div>
-            </div>
-
-            <div class="text-xs text-muted mb-1">起始时间</div>
-            <div class="flex items-center gap-2 mb-2">
-              <button id="ivl-start-soonest" class="btn small primary">从下一个匹配时间开始</button>
-              <span class="text-xs text-muted">或</span>
-              <input type="datetime-local" id="ivl-start-date" class="px-2 py-1.5 rounded border border-default text-sm"/>
-            </div>
-            <p class="text-xs text-muted">例:现在是周三 12:00,选每 3 天 13:00 → 从今天 13:00 起,然后周六 13:00、周二 13:00...</p>
-          </div>
-
-          <!-- 自定义 -->
-          <div id="sched-advanced" class="sched-panel hidden">
-            <div class="text-xs text-muted mb-2">Cron 表达式(5 字段:分 时 日 月 星期)</div>
-            <input type="text" value="0 9 * * 1-5" id="cron-expr" class="w-full px-3 py-2 rounded border border-default mono text-sm mb-2"/>
-            <div class="text-xs flex items-center gap-2">
-              <span class="text-muted">解析:</span>
-              <span style="color:var(--ok)">✅ 工作日 09:00</span>
-              <a href="https://crontab.guru" target="_blank" class="ml-auto" style="color:var(--accent)">crontab.guru ↗</a>
-            </div>
-          </div>
-
-          <!-- 触发预览 -->
-          <div class="mt-4 pt-4 border-t border-default">
-            <div class="text-xs text-muted mb-2">下次触发预览(近 3 次)</div>
-            <div id="next-fires" class="space-y-1 text-xs mono"></div>
+    <!-- Weekly -->
+    <div id="sched-weekly" class="sched-panel hidden">
+      <div class="row">
+        <label>Days</label>
+        <div>
+          <div id="week-days" class="flex flex-wrap gap-1.5 mb-2"></div>
+          <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span class="text-dim">快捷:</span>
+            <button class="btn xsmall" data-week-preset="weekday">工作日</button>
+            <button class="btn xsmall" data-week-preset="weekend">周末</button>
+            <button class="btn xsmall" data-week-preset="all">每天</button>
+            <button class="btn xsmall" data-week-preset="mwf">一·三·五</button>
+            <button class="btn xsmall" data-week-preset="clear">清空</button>
           </div>
         </div>
       </div>
+      <div class="row">
+        <label>Times</label>
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-dim text-[11px]">添加:</span>
+            <div id="picker-weekly"></div>
+            <button class="btn small" data-add-to="weekly">+ Add</button>
+            <span class="text-dim text-[11px] ml-2">快捷:</span>
+            <button class="chip-preset" data-quick="weekly" data-time="09:00">9:00</button>
+            <button class="chip-preset" data-quick="weekly" data-time="12:00">12:00</button>
+            <button class="chip-preset" data-quick="weekly" data-time="18:00">18:00</button>
+          </div>
+          <div id="list-weekly" class="flex flex-wrap gap-1.5 min-h-[28px]"></div>
+        </div>
+      </div>
+      <div class="row">
+        <label></label>
+        <div>
+          <span class="text-dim text-[11px]">组合快捷(自动设置日期+时间):</span>
+          <div class="flex flex-wrap gap-1.5 mt-1.5">
+            <button class="chip-preset" data-combo="weekday-9">工作日 9点</button>
+            <button class="chip-preset" data-combo="weekday-12">工作日 12点</button>
+            <button class="chip-preset" data-combo="mon-0">周一 0点</button>
+            <button class="chip-preset" data-combo="weekend-10">周末 10点</button>
+            <button class="chip-preset" data-combo="mwf-9">一·三·五 9点</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <!-- Retry policy 全中文 + 悬浮解释 -->
-      <div class="surface rounded-lg p-4 border border-default">
-        <div class="text-sm font-medium mb-3">失败重试策略</div>
-        <div class="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div class="text-muted text-xs mb-1 flex items-center gap-1">
-              最多重试次数
-              <span class="tip" data-tip="Agent 跑挂或完成判定不过时,自动再试几次。设为 0 = 不重试。Loop 的核心价值在这。">ⓘ</span>
-            </div>
-            <input type="number" value="3" min="0" max="20" class="w-full px-2 py-1 rounded border border-default"/>
+    <!-- Monthly -->
+    <div id="sched-monthly" class="sched-panel hidden">
+      <div class="row">
+        <label>Days</label>
+        <div>
+          <div id="month-days" class="grid grid-cols-[repeat(15,minmax(0,1fr))] gap-1 mb-2 max-w-[600px]"></div>
+          <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span class="text-dim">快捷:</span>
+            <button class="btn xsmall" data-month-preset="first">月初</button>
+            <button class="btn xsmall" data-month-preset="mid">月中</button>
+            <button class="btn xsmall" data-month-preset="end">月末</button>
+            <button class="btn xsmall" data-month-preset="bi">1·15</button>
+            <button class="btn xsmall" data-month-preset="clear">清空</button>
           </div>
-          <div>
-            <div class="text-muted text-xs mb-1 flex items-center gap-1">
-              单次最长时间
-              <span class="tip" data-tip="单次 Run 超过这个时间会被强杀(SIGKILL)。防止 Agent 卡死。">ⓘ</span>
-            </div>
-            <input type="text" value="10 分钟" class="w-full px-2 py-1 rounded border border-default"/>
+          <p class="text-dim text-[11px] mt-2">⚠ 29-31 号:不存在的月份会跳过</p>
+        </div>
+      </div>
+      <div class="row">
+        <label>Times</label>
+        <div>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-dim text-[11px]">添加:</span>
+            <div id="picker-monthly"></div>
+            <button class="btn small" data-add-to="monthly">+ Add</button>
+            <span class="text-dim text-[11px] ml-2">快捷:</span>
+            <button class="chip-preset" data-quick="monthly" data-time="09:00">9:00</button>
+            <button class="chip-preset" data-quick="monthly" data-time="18:00">18:00</button>
           </div>
-          <div>
-            <div class="text-muted text-xs mb-1 flex items-center gap-1">
-              Token 预算
-              <span class="tip" data-tip="单次 Run 累计花费上限(美元)。撞上限即终止。$0 = 不限。">ⓘ</span>
+          <div id="list-monthly" class="flex flex-wrap gap-1.5 min-h-[28px]"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interval -->
+    <div id="sched-interval" class="sched-panel hidden">
+      <div class="row">
+        <label>Every</label>
+        <div>
+          <div class="flex items-center gap-2">
+            <div class="stepper">
+              <button id="ivl-dec">−</button>
+              <input id="ivl-n" type="text" value="3"/>
+              <button id="ivl-inc">+</button>
             </div>
-            <input type="text" value="$1" class="w-full px-2 py-1 rounded border border-default"/>
-          </div>
-          <div>
-            <div class="text-muted text-xs mb-1 flex items-center gap-1">
-              彻底失败时
-              <span class="tip" data-tip="重试用完仍失败时的动作。通知 = 发飞书/邮件;停止 = 静默停。日后可加更多。">ⓘ</span>
-            </div>
-            <select class="w-full px-2 py-1 rounded border border-default">
-              <option>通知</option>
-              <option>停止</option>
+            <select id="ivl-unit" class="px-2 py-1 rounded">
+              <option value="day">天</option>
+              <option value="week">周</option>
             </select>
+            <span class="text-dim mx-2">at</span>
+            <div id="picker-interval"></div>
           </div>
         </div>
       </div>
+      <div class="row">
+        <label>Starting</label>
+        <div>
+          <div class="flex items-center gap-2">
+            <button class="btn primary small" id="ivl-soon">从下一个匹配时间开始</button>
+            <span class="text-dim">or</span>
+            <input type="datetime-local" id="ivl-date" class="px-2 py-1.5 rounded"/>
+          </div>
+          <p class="text-dim text-[11px] mt-2">例:现在周三 12:00,选每 3 天 13:00 → 从今天 13:00 起,然后周六 13:00、周二 13:00...</p>
+        </div>
+      </div>
+    </div>
 
-      <details class="border border-default rounded">
-        <summary class="px-3 py-2 text-sm text-muted">高级:System prompt template ▼</summary>
-        <textarea rows="4" class="w-full px-3 py-2 border-t border-default mono text-xs" placeholder="留空使用默认模板">{{goal}} 在 {{projectPath}} 工作。所有改动须通过 {{doneCriteria}}。</textarea>
-      </details>
+    <!-- Custom Cron -->
+    <div id="sched-cron" class="sched-panel hidden">
+      <div class="row">
+        <label>Cron expr</label>
+        <div>
+          <div class="prompt-wrap">
+            <input type="text" id="cron-expr" value="0 9 * * 1-5" class="w-full px-3 py-2 rounded mono"/>
+          </div>
+          <div class="flex items-center gap-2 mt-2 text-[11px]">
+            <span class="tok tok-ok">parsed</span>
+            <span class="mono">工作日 09:00</span>
+            <a href="https://crontab.guru" target="_blank" class="ml-auto" style="color:var(--accent)">crontab.guru ↗</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="row">
+      <label>Preview</label>
+      <div>
+        <div id="preview-sentence" class="preview-sentence"></div>
+        <div class="mt-3 text-[11px] text-dim mb-1">Next 3 fires:</div>
+        <div id="next-fires" class="space-y-0.5 text-[12px] mono"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== Retry Policy ===== -->
+  <div class="sec-h"><span>Retry Policy</span></div>
+
+  <div class="row">
+    <label>
+      Max retries
+      <span class="tip ml-1" data-tip="Agent 跑挂或 Done 不过时,自动再试几次。设为 0 = 不重试。Loop 的核心价值。">ⓘ</span>
+    </label>
+    <div>
+      <div class="stepper">
+        <button id="retry-dec">−</button>
+        <input id="retry-n" type="text" value="3"/>
+        <button id="retry-inc">+</button>
+      </div>
+      <span class="text-dim text-[11px] ml-3">次</span>
     </div>
   </div>
 
-  <div class="flex gap-3 pt-8 mt-8 border-t border-default">
-    <button class="btn">取消</button>
-    <button class="btn ml-auto">保存</button>
-    <button class="btn primary">保存并立即运行</button>
+  <div class="row">
+    <label>
+      Timeout
+      <span class="tip ml-1" data-tip="单次 Run 超过这个时间会被强杀(SIGKILL)。防止 Agent 卡死。">ⓘ</span>
+    </label>
+    <div class="flex items-center gap-2">
+      <div class="stepper">
+        <button id="to-dec">−</button>
+        <input id="to-n" type="text" value="10"/>
+        <button id="to-inc">+</button>
+      </div>
+      <select id="to-unit" class="px-2 py-1 rounded">
+        <option value="min">分钟</option>
+        <option value="hour">小时</option>
+      </select>
+      <span class="text-dim text-[11px] ml-2" id="to-hint">整数,1-120</span>
+    </div>
   </div>
+
+  <div class="row">
+    <label>
+      Budget
+      <span class="tip ml-1" data-tip="单次 Run 累计花费上限(美元)。撞上限即终止。空 = 不限。">ⓘ</span>
+    </label>
+    <div class="flex items-center gap-2">
+      <span class="text-muted">$</span>
+      <input type="text" id="budget-n" placeholder="(空 = 不限)" class="px-2 py-1.5 rounded mono w-32"/>
+    </div>
+  </div>
+
+  <div class="row">
+    <label>
+      On fail
+      <span class="tip ml-1" data-tip="重试用完仍失败时:通知 = 发飞书/邮件;停止 = 静默停。">ⓘ</span>
+    </label>
+    <div>
+      <select class="px-2 py-1.5 rounded">
+        <option>Notify</option>
+        <option>Stop</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ===== Advanced ===== -->
+  <div class="sec-h"><span>Advanced</span></div>
+
+  <details>
+    <summary>System prompt template</summary>
+    <div class="row">
+      <label></label>
+      <div>
+        <textarea rows="4" class="w-full px-3 py-2 rounded mono text-[12px]" placeholder="留空使用默认模板">{{goal}} 在 {{projectPath}} 工作。所有改动须通过 {{doneCriteria}}。</textarea>
+      </div>
+    </div>
+  </details>
+
+  <!-- ===== Save as template ===== -->
+  <div class="border-t-1 mt-8 pt-6 flex items-center justify-between">
+    <div class="text-dim text-[11px]">
+      💡 把当前表单保存成可复用的模板
+    </div>
+    <button class="btn small" id="save-tpl-btn">💾 另存为我的模板</button>
+  </div>
+
 </main>
 
-<!-- Footer -->
-<footer class="mt-16 border-t border-default surface">
-  <div class="max-w-6xl mx-auto px-6 py-6 flex items-center text-xs text-muted gap-4 flex-wrap">
+<!-- ===== Footer ===== -->
+<footer class="border-t-1 surface mt-12">
+  <div class="max-w-[1100px] mx-auto px-6 py-5 flex items-center text-[11px] text-dim gap-4 flex-wrap">
     <span>Powered by <a href="https://github.com/oh-summy" target="_blank" class="hover:underline" style="color:var(--accent)">@oh-summy</a></span>
-    <span class="text-default">·</span>
+    <span>·</span>
     <a href="https://github.com/oh-summy/Loop-Cockpit" target="_blank" class="hover:underline">GitHub</a>
     <a href="https://github.com/oh-summy/Loop-Cockpit/issues" target="_blank" class="hover:underline">Issues</a>
-    <a href="../../../README.md" class="hover:underline">English</a>
     <a href="../../../README.zh-CN.md" class="hover:underline">中文</a>
-    <span class="ml-auto">MIT License · 本地优先 · 不上云</span>
+    <a href="../../../README.md" class="hover:underline">English</a>
+    <span class="ml-auto">MIT · Local-first · No cloud</span>
   </div>
 </footer>
 
-<!-- ===================== Scripts ===================== -->
+<!-- ===== Browse Modal ===== -->
+<div id="browse-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3 class="flex items-center gap-2">
+      <span class="mono" style="color:var(--accent)">📁</span> Browse project directory
+    </h3>
+    <p class="text-dim text-[11px] mb-4">Iter 2 将走 Electron/Tauri 的 native dialog。当前原型用模拟列表。</p>
+    <div class="space-y-1 mb-4">
+      <div class="browse-item flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[var(--surface)] cursor-pointer mono text-[12px]" data-path="/Users/rocky/project/Loop-Cockpit">
+        <span>📁</span> /Users/rocky/project/Loop-Cockpit
+      </div>
+      <div class="browse-item flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[var(--surface)] cursor-pointer mono text-[12px]" data-path="/Users/rocky/project/signal-hunter">
+        <span>📁</span> /Users/rocky/project/signal-hunter
+      </div>
+      <div class="browse-item flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[var(--surface)] cursor-pointer mono text-[12px]" data-path="/Users/rocky/project/bot">
+        <span>📁</span> /Users/rocky/project/bot
+      </div>
+      <div class="browse-item flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[var(--surface)] cursor-pointer mono text-[12px]" data-path="/Users/rocky/7kolor/SH">
+        <span>📁</span> /Users/rocky/7kolor/SH
+      </div>
+    </div>
+    <div class="border-t-1 pt-3">
+      <label class="text-[11px] text-muted block mb-1">或手动输入:</label>
+      <input type="text" id="browse-manual" placeholder="/absolute/path" class="w-full px-2 py-1.5 rounded mono text-[12px]"/>
+    </div>
+    <div class="flex justify-end gap-2 mt-4">
+      <button class="btn small" onclick="closeBrowseModal()">Cancel</button>
+      <button class="btn small primary" id="browse-confirm">Select</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Save Template Modal ===== -->
+<div id="tpl-modal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3>💾 保存为我的模板</h3>
+    <p class="text-dim text-[11px] mb-3">当前表单的 Goal + Done + 类型 会被保存到 localStorage。下次创建可从模板下拉选用。</p>
+    <label class="text-[12px] text-muted block mb-1">模板名称:</label>
+    <input type="text" id="tpl-name" placeholder="例:每周质量巡检" class="w-full px-2 py-1.5 rounded mb-4"/>
+    <div class="flex justify-end gap-2">
+      <button class="btn small" onclick="closeTplModal()">Cancel</button>
+      <button class="btn small primary" id="tpl-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     SCRIPTS
+     ============================================================ -->
 <script>
-// ============ 主题切换 ============
+// ============ Theme ============
 const themeToggle = document.getElementById('theme-toggle');
 const themeIcon = document.getElementById('theme-icon');
 const themeLabel = document.getElementById('theme-label');
-
-function applyTheme(theme) {
-  if (theme === 'dark') { document.documentElement.classList.add('dark'); themeIcon.textContent = '🌙'; themeLabel.textContent = '暗色'; }
-  else { document.documentElement.classList.remove('dark'); themeIcon.textContent = '☀️'; themeLabel.textContent = '亮色'; }
-  localStorage.setItem('lc-theme', theme);
+function applyTheme(t) {
+  if (t === 'dark') { document.documentElement.classList.add('dark'); themeIcon.textContent='🌙'; themeLabel.textContent='dark'; }
+  else { document.documentElement.classList.remove('dark'); themeIcon.textContent='☀️'; themeLabel.textContent='light'; }
+  localStorage.setItem('lc-theme', t);
 }
-themeToggle.onclick = () => applyTheme((localStorage.getItem('lc-theme') || 'dark') === 'dark' ? 'light' : 'dark');
+themeToggle.onclick = () => applyTheme((localStorage.getItem('lc-theme')||'dark')==='dark'?'light':'dark');
 applyTheme(localStorage.getItem('lc-theme') || 'dark');
 
-// ============ 类型 chips (6 类多选) ============
-const TYPES = [
-  { key:'bug', label:'🐛 Bug 修复' },
-  { key:'refactor', label:'🔧 重构' },
-  { key:'test', label:'🧪 测试' },
-  { key:'docs', label:'📝 文档' },
-  { key:'check', label:'🔍 定期检查' },
-  { key:'other', label:'⚙️ 其他' }
-];
-const typeContainer = document.getElementById('type-chips');
-TYPES.forEach(t => {
-  const btn = document.createElement('button');
-  btn.className = 'chip-preset';
-  btn.textContent = t.label;
-  btn.dataset.key = t.key;
-  btn.onclick = () => {
-    const active = btn.style.background === 'rgb(124, 92, 255)' || btn.classList.contains('selected');
-    if (active) { btn.style.background = ''; btn.style.color = ''; btn.style.borderColor = 'var(--border)'; btn.classList.remove('selected'); }
-    else { btn.style.background = 'var(--accent)'; btn.style.color = '#fff'; btn.style.borderColor = 'var(--accent)'; btn.classList.add('selected'); }
-  };
-  typeContainer.appendChild(btn);
-});
-// 默认选定"定期检查"
-typeContainer.querySelector('[data-key="check"]').click();
+// ============ Templates ============
+const TEMPLATES = {
+  bug: {
+    type: 'bug', name: 'Bug 修复', icon: '🐛',
+    goalText: "修复 [问题简述]。定位根因,确保不复发。",
+    goalCp: [
+      {label:"复现问题", append:"\n复现步骤:"},
+      {label:"定位根因", append:"\n在 [文件路径] 找到根因"},
+      {label:"写回归测试", append:"\n新增测试覆盖此 bug"},
+      {label:"提交 PR", append:"\n提交 PR 关联 issue"},
+    ],
+    doneText: "pnpm test",
+    doneCp: [
+      {label:"通过测试", append:" && pnpm test"},
+      {label:"通过 lint", append:" && pnpm lint"},
+      {label:"通过类型检查", append:" && pnpm typecheck"},
+    ],
+  },
+  refactor: {
+    type: 'refactor', name: '重构', icon: '🔧',
+    goalText: "对 [模块/文件] 进行重构,保持外部行为不变。",
+    goalCp: [
+      {label:"拆分函数", append:"\n拆分:[函数列表]"},
+      {label:"提取常量", append:"\n提取常量/魔术数字"},
+      {label:"加类型注释", append:"\n补充 TS 类型"},
+      {label:"测试不退化", append:"\n确保所有现有测试通过"},
+    ],
+    doneText: "pnpm test && pnpm typecheck",
+    doneCp: [
+      {label:"测试通过", append:" && pnpm test"},
+      {label:"类型检查", append:" && pnpm typecheck"},
+      {label:"lint 通过", append:" && pnpm lint"},
+    ],
+  },
+  test: {
+    type: 'test', name: '测试', icon: '🧪',
+    goalText: "为 [模块] 补充测试,目标覆盖率 ≥ 80%。",
+    goalCp: [
+      {label:"单元测试", append:"\n单元测试覆盖核心函数"},
+      {label:"集成测试", append:"\n集成测试覆盖关键路径"},
+      {label:"边界用例", append:"\n覆盖边界 / 异常用例"},
+      {label:"coverage 报告", append:"\n生成 coverage 报告"},
+    ],
+    doneText: "pnpm test -- --coverage",
+    doneCp: [
+      {label:"覆盖率 > 80%", append:" && coverage > 80"},
+      {label:"无失败", append:" && pnpm test"},
+    ],
+  },
+  docs: {
+    type: 'docs', name: '文档', icon: '📝',
+    goalText: "为 [模块/功能] 补充文档。",
+    goalCp: [
+      {label:"API 文档", append:"\nAPI 文档"},
+      {label:"用法示例", append:"\n用法示例 / 代码片段"},
+      {label:"Changelog", append:"\nChangelog 更新"},
+      {label:"README", append:"\nREADME 同步"},
+    ],
+    doneText: "test -f docs/<file>.md",
+    doneCp: [
+      {label:"文件存在", append:" && test -f docs/<file>.md"},
+      {label:"链接有效", append:" && markdown-link-check docs/<file>.md"},
+    ],
+  },
+  check: {
+    type: 'check', name: '定期检查', icon: '🔍',
+    goalText: "保持 main 分支健康。",
+    goalCp: [
+      {label:"lint 通过", append:" lint 通过"},
+      {label:"测试通过", append:" 全部测试通过"},
+      {label:"构建成功", append:" build 不报错"},
+      {label:"类型检查", append:" 类型检查通过"},
+    ],
+    doneText: "pnpm lint && pnpm test && pnpm build",
+    doneCp: [
+      {label:"lint", append:" && pnpm lint"},
+      {label:"test", append:" && pnpm test"},
+      {label:"build", append:" && pnpm build"},
+      {label:"typecheck", append:" && pnpm typecheck"},
+    ],
+  },
+  other: {
+    type: 'other', name: '其他', icon: '⚙️',
+    goalText: "",
+    goalCp: [],
+    doneText: "",
+    doneCp: [],
+  },
+};
 
-// ============ 启动方式 / 定时子模式 ============
-function activateTab(tabs, target, panelPrefix, panels) {
-  tabs.forEach(t => t.classList.remove('active'));
-  target.classList.add('active');
-  panels.forEach(p => p.classList.add('hidden'));
-  const id = panelPrefix + target.dataset[Object.keys(target.dataset).find(k => k.startsWith('mode') || k.startsWith('sched'))];
-  document.getElementById(id)?.classList.remove('hidden');
+let currentType = 'check';
+let goalCpState = []; // {label, append, checked}
+let doneCpState = [];
+
+function applyTemplate(typeKey) {
+  currentType = typeKey;
+  const t = TEMPLATES[typeKey];
+  document.getElementById('type-label').textContent = `${t.icon} ${t.name}`;
+  document.getElementById('goal-text').value = t.goalText;
+  document.getElementById('done-text').value = t.doneText;
+  goalCpState = t.goalCp.map(c => ({...c, checked: false}));
+  doneCpState = t.doneCp.map(c => ({...c, checked: false}));
+  // 定期检查 默认勾选所有
+  if (typeKey === 'check') {
+    doneCpState.forEach(c => c.checked = true);
+  }
+  renderCps();
 }
 
-document.querySelectorAll('.mode-tab').forEach(b => {
-  b.onclick = () => { if (b.disabled) return; activateTab(document.querySelectorAll('.mode-tab'), b, 'mode-', document.querySelectorAll('.mode-panel')); updateNextFires(); };
+function renderCps() {
+  const renderTo = (container, list, baseTextEl, mode) => {
+    container.innerHTML = '';
+    list.forEach((cp, i) => {
+      const el = document.createElement('span');
+      el.className = 'cp-chip' + (cp.checked ? ' checked' : '');
+      el.innerHTML = `<span class="box">${cp.checked ? '✓' : ''}</span><span>${cp.label}</span>`;
+      el.onclick = () => {
+        cp.checked = !cp.checked;
+        renderCps();
+        // 重新基于模板 baseText + 勾选的 cp 拼装
+        const t = TEMPLATES[currentType];
+        const base = mode === 'goal' ? t.goalText : t.doneText;
+        const appended = list.filter(c => c.checked).map(c => c.append).join('');
+        baseTextEl.value = base + appended;
+      };
+      container.appendChild(el);
+    });
+  };
+  renderTo(document.getElementById('goal-cp'), goalCpState, document.getElementById('goal-text'), 'goal');
+  renderTo(document.getElementById('done-cp'), doneCpState, document.getElementById('done-text'), 'done');
+}
+
+applyTemplate('check');
+
+// ============ Type & Template dropdowns ============
+function setupDropdown(btnId, popId, onSelect) {
+  const btn = document.getElementById(btnId);
+  const pop = document.getElementById(popId);
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.popover').forEach(p => { if(p !== pop) p.classList.add('hidden'); });
+    pop.classList.toggle('hidden');
+  };
+  pop.querySelectorAll('.popover-item:not(.muted)').forEach(item => {
+    item.onclick = (e) => {
+      e.stopPropagation();
+      if (onSelect) onSelect(item);
+      pop.classList.add('hidden');
+    };
+  });
+}
+setupDropdown('type-btn', 'type-pop', (item) => {
+  if (item.dataset.type) applyTemplate(item.dataset.type);
 });
-document.querySelectorAll('.sched-tab').forEach(b => {
-  b.onclick = () => { activateTab(document.querySelectorAll('.sched-tab'), b, 'sched-', document.querySelectorAll('.sched-panel')); updateNextFires(); };
+setupDropdown('tpl-btn', 'tpl-pop', (item) => {
+  if (item.dataset.tpl === 'builtin') {
+    applyTemplate(currentType);
+    document.getElementById('tpl-label').textContent = '基础版';
+  } else if (item.dataset.tpl === 'blank') {
+    document.getElementById('goal-text').value = '';
+    document.getElementById('done-text').value = '';
+    goalCpState = []; doneCpState = []; renderCps();
+    document.getElementById('tpl-label').textContent = '空白';
+  } else if (item.dataset.user) {
+    const u = JSON.parse(localStorage.getItem('lc-templates') || '[]').find(x => x.id === item.dataset.user);
+    if (u) {
+      document.getElementById('goal-text').value = u.goalText;
+      document.getElementById('done-text').value = u.doneText;
+      currentType = u.type;
+      document.getElementById('type-label').textContent = `${TEMPLATES[u.type].icon} ${TEMPLATES[u.type].name}`;
+      document.getElementById('tpl-label').textContent = u.name;
+    }
+  }
 });
 
-// ============ 时间选择器(小时滚轮 + 分钟 + ± 按钮 + 手动输入) ============
+document.addEventListener('click', () => {
+  document.querySelectorAll('.popover').forEach(p => p.classList.add('hidden'));
+});
+
+// Render user templates list
+function renderUserTemplates() {
+  const list = JSON.parse(localStorage.getItem('lc-templates') || '[]');
+  const c = document.getElementById('user-tpl-list');
+  if (list.length === 0) {
+    c.innerHTML = '<div class="popover-item" style="color:var(--fg-dim)">(暂无)</div>';
+    return;
+  }
+  c.innerHTML = list.map(t => `<div data-user="${t.id}" class="popover-item">${TEMPLATES[t.type].icon} ${t.name}</div>`).join('');
+  c.querySelectorAll('.popover-item').forEach(item => {
+    item.onclick = (e) => {
+      e.stopPropagation();
+      const u = list.find(x => x.id === item.dataset.user);
+      document.getElementById('goal-text').value = u.goalText;
+      document.getElementById('done-text').value = u.doneText;
+      currentType = u.type;
+      document.getElementById('type-label').textContent = `${TEMPLATES[u.type].icon} ${TEMPLATES[u.type].name}`;
+      document.getElementById('tpl-label').textContent = u.name;
+      goalCpState = []; doneCpState = []; renderCps();
+      document.getElementById('tpl-pop').classList.add('hidden');
+    };
+  });
+}
+renderUserTemplates();
+
+// ============ Mode tabs ============
+document.querySelectorAll('.mode-tab').forEach(b => {
+  b.onclick = () => {
+    if (b.disabled) return;
+    document.querySelectorAll('.mode-tab').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('mode-' + b.dataset.mode).classList.remove('hidden');
+    updatePreview();
+  };
+});
+
+// ============ Sched tabs ============
+document.querySelectorAll('.sched-tab').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.sched-tab').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.querySelectorAll('.sched-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById('sched-' + b.dataset.sched).classList.remove('hidden');
+    updatePreview();
+  };
+});
+
+// ============ Time picker (HH:MM stepper) ============
 function makeTimePicker(containerId, defaultH=9, defaultM=0) {
   const c = document.getElementById(containerId);
-  c.innerHTML = `<div class="time-input">
-    <button data-step="h" data-dir="-1">−</button>
-    <input type="text" class="th" value="${String(defaultH).padStart(2,'0')}" maxlength="2"/>
-    <span class="sep">:</span>
-    <input type="text" class="tm" value="${String(defaultM).padStart(2,'0')}" maxlength="2"/>
-    <button data-step="m" data-dir="1">+</button>
-  </div>`;
+  c.innerHTML = `
+    <div class="time-stepper">
+      <button data-step="h" data-dir="-1">−</button>
+      <input class="th" type="text" value="${String(defaultH).padStart(2,'0')}" maxlength="2"/>
+      <button data-step="h" data-dir="1">+</button>
+      <span class="sep">:</span>
+      <button data-step="m" data-dir="-1">−</button>
+      <input class="tm" type="text" value="${String(defaultM).padStart(2,'0')}" maxlength="2"/>
+      <button data-step="m" data-dir="1">+</button>
+    </div>
+  `;
   const th = c.querySelector('.th'), tm = c.querySelector('.tm');
   c.querySelectorAll('button').forEach(b => {
     b.onclick = () => {
@@ -456,185 +927,239 @@ function makeTimePicker(containerId, defaultH=9, defaultM=0) {
       }
     };
   });
-  // 左侧按钮:小时-,右侧按钮:分钟+
-  // 但我们要 4 个按钮:补两个
-  const inputBox = c.querySelector('.time-input');
-  // 实际上要 h±,m± 各两个,改造:
-  inputBox.innerHTML = `
-    <button data-step="h" data-dir="-1">−</button>
-    <input type="text" class="th" value="${String(defaultH).padStart(2,'0')}" maxlength="2"/>
-    <button data-step="h" data-dir="1">+</button>
-    <span class="sep">:</span>
-    <button data-step="m" data-dir="-1">−</button>
-    <input type="text" class="tm" value="${String(defaultM).padStart(2,'0')}" maxlength="2"/>
-    <button data-step="m" data-dir="1">+</button>
-  `;
-  // 重新绑定
-  const th2 = inputBox.querySelector('.th'), tm2 = inputBox.querySelector('.tm');
-  inputBox.querySelectorAll('button').forEach(b => {
-    b.onclick = () => {
-      const step = b.dataset.step, dir = +b.dataset.dir;
-      if (step === 'h') {
-        let h = (parseInt(th2.value) || 0) + dir;
-        if (h < 0) h = 23; if (h > 23) h = 0;
-        th2.value = String(h).padStart(2, '0');
-      } else {
-        let m = (parseInt(tm2.value) || 0) + dir * 10;
-        if (m < 0) m = 50; if (m >= 60) m = 0;
-        tm2.value = String(m).padStart(2, '0');
-      }
-    };
-  });
-  // 手动输入 校验
-  [th2, tm2].forEach(inp => {
+  [th, tm].forEach(inp => {
     inp.onblur = () => {
-      let v = parseInt(inp.value);
-      if (isNaN(v)) v = 0;
+      let v = parseInt(inp.value); if (isNaN(v)) v = 0;
       const max = inp.classList.contains('th') ? 23 : 59;
       v = Math.max(0, Math.min(max, v));
       inp.value = String(v).padStart(2, '0');
     };
   });
-  return {
-    getValue: () => `${th2.value}:${tm2.value}`
-  };
+  return { get: () => `${th.value}:${tm.value}` };
 }
-
 const pickers = {
   daily: makeTimePicker('picker-daily'),
   weekly: makeTimePicker('picker-weekly'),
-  monthly: makeTimePicker('picker-monthly'),
-  interval: makeTimePicker('picker-interval', 9, 0),
+  monthly: makeTimePicker('picker-monthly', 9, 0),
+  interval: makeTimePicker('picker-interval'),
 };
 
-// ============ 已选时间 chips ============
-const selectedTimes = { daily: ['09:00'], weekly: ['09:00'], monthly: ['01:00'] };
-
-function renderTimeList(scope) {
+// ============ Selected times ============
+const sel = { daily:['09:00'], weekly:['09:00'], monthly:['09:00'], weekDays:[1,2,3,4,5], monthDays:[1] };
+function renderList(scope) {
   const c = document.getElementById('list-' + scope);
   c.innerHTML = '';
-  selectedTimes[scope].sort().forEach(t => {
+  sel[scope].sort().forEach(t => {
     const chip = document.createElement('span');
     chip.className = 'chip';
-    chip.innerHTML = `${t} <span class="x" data-t="${t}" data-s="${scope}">×</span>`;
+    chip.innerHTML = `${t} <span class="x" data-t="${t}">×</span>`;
+    chip.querySelector('.x').onclick = () => {
+      sel[scope] = sel[scope].filter(x => x !== t);
+      renderList(scope); updatePreview();
+    };
     c.appendChild(chip);
   });
-  c.querySelectorAll('.x').forEach(x => {
-    x.onclick = () => {
-      selectedTimes[x.dataset.s] = selectedTimes[x.dataset.s].filter(t => t !== x.dataset.t);
-      renderTimeList(x.dataset.s);
-      updateNextFires();
-    };
-  });
 }
-renderTimeList('daily'); renderTimeList('weekly'); renderTimeList('monthly');
+['daily','weekly','monthly'].forEach(renderList);
 
-// 添加按钮
-document.querySelectorAll('[data-add-to]').forEach(btn => {
-  btn.onclick = () => {
-    const scope = btn.dataset.addTo;
-    const t = pickers[scope].getValue();
-    if (!selectedTimes[scope].includes(t)) {
-      selectedTimes[scope].push(t);
-      renderTimeList(scope);
-      updateNextFires();
-    }
+document.querySelectorAll('[data-add-to]').forEach(b => {
+  b.onclick = () => {
+    const s = b.dataset.addTo;
+    const t = pickers[s].get();
+    if (!sel[s].includes(t)) { sel[s].push(t); renderList(s); updatePreview(); }
   };
 });
 
-// 快捷按钮
-document.querySelectorAll('[data-quick]').forEach(btn => {
-  btn.onclick = () => {
-    const scope = btn.dataset.quick, t = btn.dataset.time;
-    if (!selectedTimes[scope].includes(t)) {
-      selectedTimes[scope].push(t);
-      renderTimeList(scope);
-      updateNextFires();
-    }
+document.querySelectorAll('[data-quick]').forEach(b => {
+  b.onclick = () => {
+    const s = b.dataset.quick, t = b.dataset.time;
+    if (!sel[s].includes(t)) { sel[s].push(t); renderList(s); updatePreview(); }
   };
 });
 
-// ============ 周几按钮 + 快捷 ============
-const weeks = [['一', 1], ['二', 2], ['三', 3], ['四', 4], ['五', 5], ['六', 6], ['日', 0]];
+// ============ Week days ============
+const weeks = [['一',1],['二',2],['三',3],['四',4],['五',5],['六',6],['日',0]];
 const weekContainer = document.getElementById('week-days');
 weeks.forEach(([label, n]) => {
   const b = document.createElement('button');
-  b.className = 'week-btn' + ([1,2,3,4,5].includes(n) ? ' active' : '');
-  b.textContent = '周' + label;
-  b.dataset.day = n;
-  b.onclick = () => { b.classList.toggle('active'); updateNextFires(); };
+  b.className = 'week-btn' + (sel.weekDays.includes(n) ? ' active' : '');
+  b.textContent = '周' + label; b.dataset.day = n;
+  b.onclick = () => {
+    if (sel.weekDays.includes(n)) sel.weekDays = sel.weekDays.filter(x => x !== n);
+    else sel.weekDays.push(n);
+    b.classList.toggle('active');
+    updatePreview();
+  };
   weekContainer.appendChild(b);
 });
+
 document.querySelectorAll('[data-week-preset]').forEach(b => {
   b.onclick = () => {
     const p = b.dataset.weekPreset;
-    weekContainer.querySelectorAll('.week-btn').forEach(btn => {
-      const d = +btn.dataset.day;
-      const active =
-        p === 'workday' ? [1,2,3,4,5].includes(d) :
-        p === 'weekend' ? [0,6].includes(d) :
-        p === 'all' ? true :
-        false;
-      btn.classList.toggle('active', active);
-    });
-    updateNextFires();
+    sel.weekDays = p==='weekday'?[1,2,3,4,5]:p==='weekend'?[0,6]:p==='all'?[0,1,2,3,4,5,6]:p==='mwf'?[1,3,5]:[];
+    weekContainer.querySelectorAll('.week-btn').forEach(btn => btn.classList.toggle('active', sel.weekDays.includes(+btn.dataset.day)));
+    updatePreview();
   };
 });
 
-// ============ 月日按钮(1-31) + 快捷 ============
+// Combo presets (auto set 日期 + 时间)
+document.querySelectorAll('[data-combo]').forEach(b => {
+  b.onclick = () => {
+    const c = b.dataset.combo;
+    const map = {
+      'weekday-9': { d:[1,2,3,4,5], t:['09:00'] },
+      'weekday-12': { d:[1,2,3,4,5], t:['12:00'] },
+      'mon-0': { d:[1], t:['00:00'] },
+      'weekend-10': { d:[0,6], t:['10:00'] },
+      'mwf-9': { d:[1,3,5], t:['09:00'] },
+    };
+    const cfg = map[c];
+    sel.weekDays = cfg.d; sel.weekly = cfg.t;
+    weekContainer.querySelectorAll('.week-btn').forEach(btn => btn.classList.toggle('active', sel.weekDays.includes(+btn.dataset.day)));
+    renderList('weekly');
+    updatePreview();
+  };
+});
+
+// ============ Month days (1-31, 15 per row) ============
 const monthContainer = document.getElementById('month-days');
 for (let d = 1; d <= 31; d++) {
   const b = document.createElement('button');
-  b.className = 'day-btn' + (d === 1 ? ' active' : '') + (d > 28 ? ' warn' : '');
-  b.textContent = d;
-  b.dataset.day = d;
-  b.title = d === 31 ? '部分月份无 31 号,会跳过' : (d === 30 ? '2 月无 30 号' : (d === 29 ? '2 月仅闰年有 29 号' : ''));
-  b.onclick = () => { b.classList.toggle('active'); updateNextFires(); };
+  b.className = 'day-btn' + (sel.monthDays.includes(d) ? ' active' : '') + (d > 28 ? ' warn' : '');
+  b.textContent = d; b.dataset.day = d;
+  if (d > 28) b.title = d===31?'部分月份无 31 号':d===30?'2 月无 30 号':'2 月仅闰年有 29 号';
+  b.onclick = () => {
+    if (sel.monthDays.includes(d)) sel.monthDays = sel.monthDays.filter(x => x !== d);
+    else sel.monthDays.push(d);
+    b.classList.toggle('active');
+    updatePreview();
+  };
   monthContainer.appendChild(b);
 }
+
 document.querySelectorAll('[data-month-preset]').forEach(b => {
   b.onclick = () => {
     const p = b.dataset.monthPreset;
-    monthContainer.querySelectorAll('.day-btn').forEach(btn => {
-      const d = +btn.dataset.day;
-      const active =
-        p === 'first' ? d === 1 :
-        p === 'mid' ? d === 15 :
-        p === 'end' ? d === 28 :
-        false;
-      btn.classList.toggle('active', active);
-    });
-    updateNextFires();
+    sel.monthDays = p==='first'?[1]:p==='mid'?[15]:p==='end'?[28]:p==='bi'?[1,15]:[];
+    monthContainer.querySelectorAll('.day-btn').forEach(btn => btn.classList.toggle('active', sel.monthDays.includes(+btn.dataset.day)));
+    updatePreview();
   };
 });
 
-// ============ Interval ============
-document.getElementById('ivl-dec').onclick = () => { const i = document.getElementById('ivl-n'); i.value = Math.max(1, +i.value - 1); updateNextFires(); };
-document.getElementById('ivl-inc').onclick = () => { const i = document.getElementById('ivl-n'); i.value = Math.min(365, +i.value + 1); updateNextFires(); };
-
-// ============ 触发预览(模拟) ============
-function updateNextFires() {
-  const c = document.getElementById('next-fires');
-  if (!c) return;
-  c.innerHTML = '';
-  const mode = document.querySelector('.mode-tab.active')?.dataset.mode;
-  if (mode === 'manual') { c.innerHTML = '<div class="text-muted">手动模式无定时触发</div>'; return; }
-  // 真实实现走后端 cron parser,这里只是 demo
-  const sched = document.querySelector('.sched-tab.active')?.dataset.sched;
-  let preview;
-  if (sched === 'daily') preview = ['明天 09:00', '后天 09:00', '大后天 09:00'];
-  else if (sched === 'weekly') preview = ['本周五 09:00', '下周一 09:00', '下周二 09:00'];
-  else if (sched === 'monthly') preview = ['7月 1 号 01:00', '8月 1 号 01:00', '9月 1 号 01:00'];
-  else if (sched === 'interval') preview = ['今天 13:00', '6月 30 13:00', '7月 3 13:00 (每 3 天)'];
-  else preview = ['工作日 09:00', '工作日 09:00', '工作日 09:00'];
-  preview.forEach(t => {
-    const div = document.createElement('div');
-    div.style.color = 'var(--fg)';
-    div.textContent = '· ' + t;
-    c.appendChild(div);
-  });
+// ============ Number steppers ============
+function stepper(decId, incId, inpId, min, max, step=1) {
+  const inp = document.getElementById(inpId);
+  document.getElementById(decId).onclick = () => {
+    let v = parseFloat(inp.value) || 0; v -= step; if (v < min) v = min; inp.value = step < 1 ? v.toFixed(1) : v;
+  };
+  document.getElementById(incId).onclick = () => {
+    let v = parseFloat(inp.value) || 0; v += step; if (v > max) v = max; inp.value = step < 1 ? v.toFixed(1) : v;
+  };
 }
-updateNextFires();
+stepper('retry-dec','retry-inc','retry-n',0,20,1);
+stepper('to-dec','to-inc','to-n',1,120,1);
+stepper('ivl-dec','ivl-inc','ivl-n',1,365,1);
+
+// Timeout unit switch
+const toUnit = document.getElementById('to-unit');
+const toN = document.getElementById('to-n');
+const toHint = document.getElementById('to-hint');
+toUnit.onchange = () => {
+  if (toUnit.value === 'hour') {
+    toN.value = '0.5'; toHint.textContent = '半小时步长,0.5-24';
+    stepper('to-dec','to-inc','to-n',0.5,24,0.5);
+  } else {
+    toN.value = '10'; toHint.textContent = '整数,1-120';
+    stepper('to-dec','to-inc','to-n',1,120,1);
+  }
+};
+
+// ============ Browse modal ============
+const browseModal = document.getElementById('browse-modal');
+let selectedPath = '';
+document.getElementById('browse-btn').onclick = () => {
+  selectedPath = document.getElementById('path-input').value;
+  document.getElementById('browse-manual').value = selectedPath;
+  browseModal.classList.remove('hidden');
+};
+function closeBrowseModal() { browseModal.classList.add('hidden'); }
+window.closeBrowseModal = closeBrowseModal;
+document.querySelectorAll('.browse-item').forEach(item => {
+  item.onclick = () => {
+    document.querySelectorAll('.browse-item').forEach(x => x.style.background = '');
+    item.style.background = 'var(--accent-soft)';
+    selectedPath = item.dataset.path;
+    document.getElementById('browse-manual').value = selectedPath;
+  };
+});
+document.getElementById('browse-manual').oninput = (e) => { selectedPath = e.target.value; };
+document.getElementById('browse-confirm').onclick = () => {
+  document.getElementById('path-input').value = selectedPath;
+  closeBrowseModal();
+};
+
+// ============ Save template modal ============
+const tplModal = document.getElementById('tpl-modal');
+document.getElementById('save-tpl-btn').onclick = () => {
+  document.getElementById('tpl-name').value = '';
+  tplModal.classList.remove('hidden');
+};
+function closeTplModal() { tplModal.classList.add('hidden'); }
+window.closeTplModal = closeTplModal;
+document.getElementById('tpl-save').onclick = () => {
+  const name = document.getElementById('tpl-name').value.trim();
+  if (!name) { alert('请输入模板名称'); return; }
+  const list = JSON.parse(localStorage.getItem('lc-templates') || '[]');
+  const newTpl = {
+    id: 'u_' + Date.now(),
+    name, type: currentType,
+    goalText: document.getElementById('goal-text').value,
+    doneText: document.getElementById('done-text').value,
+  };
+  list.push(newTpl);
+  localStorage.setItem('lc-templates', JSON.stringify(list));
+  renderUserTemplates();
+  closeTplModal();
+};
+
+// ============ Preview sentence + Next fires ============
+function chineseDayName(n) { return ['日','一','二','三','四','五','六'][n]; }
+function updatePreview() {
+  const sentenceEl = document.getElementById('preview-sentence');
+  const nextEl = document.getElementById('next-fires');
+  if (!sentenceEl) return;
+  const mode = document.querySelector('.mode-tab.active')?.dataset.mode;
+  if (mode === 'manual') {
+    sentenceEl.textContent = '手动触发(无计划)';
+    nextEl.innerHTML = '<div class="text-dim">仅在点击 Run now 时触发</div>';
+    return;
+  }
+  const sched = document.querySelector('.sched-tab.active')?.dataset.sched;
+  let sentence = '', fires = [];
+  if (sched === 'daily') {
+    sentence = `每天 ${sel.daily.join(' · ')}`;
+    fires = ['今日 09:00','明日 09:00','后日 09:00'];
+  } else if (sched === 'weekly') {
+    const days = sel.weekDays.sort().map(d => '周' + chineseDayName(d)).join('、');
+    sentence = `每周 ${days} ${sel.weekly.join(' · ')}`;
+    fires = ['本周一 09:00','本周三 09:00','本周五 09:00'];
+  } else if (sched === 'monthly') {
+    const days = sel.monthDays.sort((a,b)=>a-b).join('、');
+    sentence = `每月 ${days} 号 ${sel.monthly.join(' · ')}`;
+    fires = ['7月 1日 09:00','7月 15日 09:00','8月 1日 09:00'];
+  } else if (sched === 'interval') {
+    const n = document.getElementById('ivl-n').value;
+    const u = document.getElementById('ivl-unit').value === 'day' ? '天' : '周';
+    sentence = `每 ${n} ${u} 触发,起始 ${pickers.interval.get()}`;
+    fires = ['今日 13:00','3 天后 13:00','6 天后 13:00'];
+  } else if (sched === 'cron') {
+    sentence = `工作日 09:00 (Cron: 0 9 * * 1-5)`;
+    fires = ['明日 09:00','后日 09:00','大后日 09:00'];
+  }
+  sentenceEl.textContent = sentence;
+  nextEl.innerHTML = fires.map(f => `<div>· ${f}</div>`).join('');
+}
+updatePreview();
 </script>
 </body>
 </html>

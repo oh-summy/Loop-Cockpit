@@ -81,16 +81,23 @@ open docs/prototype/features/blueprint-editor/index.html
 |---|---|---|
 | 2026-06-28 | v1 | 3 变体 A/B/C |
 | 2026-06-28 | v2 | 基于 B + 维护者反馈:主题切换 + 结构化 Cron 配置器 + Manual 语义说明 |
-| 2026-06-28 | v3 | v2 + 7 项细化反馈:小时分钟滚轮选择器、周末/工作日快捷、每月 1-31 多选 + 月初/月中/月末快捷、**新增"每 N 天/周"模式 + 起始时间**、Retry Policy 中文化 + ⓘ 悬浮解释、Footer(GitHub + Power by)、Agent 显示名空格(Claude Code) + 模型本地读取提示、**类型字段(6 类多选:Bug 修复/重构/测试/文档/定期检查/其他)** |
+| 2026-06-28 | v3 | v2 + 7 项细化反馈:时间滚轮、周末/工作日快捷、每 N 天/周 + 起始时间、Retry Policy 中文化、Footer、Agent 显示名空格、类型字段 |
+| 2026-06-28 | **v4** | **完全重设计**:Linear + Warp 混合风格(JetBrains Mono / Inter / 13px 高密度 / 1px edge-to-edge 分隔)+ **模板系统**(6 类内置模板 + 用户另存) + **可勾选要点追加** + 数字 stepper + 路径选择器 popup + 完整规则预览句。详细设计稿见 [docs/superpowers/specs/2026-06-28-blueprint-editor-v4-design.md](../../../superpowers/specs/2026-06-28-blueprint-editor-v4-design.md) |
 
-## v2 → v3 变化要点
+## v3 → v4 完全重设计
 
-| 项 | v2 | v3 |
+| 项 | v3 | v4 |
 |---|---|---|
-| 时间选择 | 8 个固定预设 chips | 滚轮 + ± 按钮 + 手动输入 + 6 快捷预设(0/4/8/12/16/20点)+ 已选时间 chip 显示 |
-| 周/月快捷 | 无 | 周:工作日/周末/全选/清空;月:月初/月中/月末/清空 |
-| 周期模式 | 无 | **新增 每 N 天/周 + 起始时间("从下一个匹配时间开始" 或 datetime-local)** |
-| Retry Policy | 英文 jargon | 全中文 + 4 个 ⓘ 悬浮解释 |
-| Footer | 无 | GitHub / Issues / 中英 link / Power by @oh-summy |
-| Agent 显示 | claude-code(hyphen) | Claude Code(空格);说明本地配置读取 |
-| 类型字段 | 无 | 6 类 chip 多选,默认选"定期检查" |
+| 视觉风格 | Tailwind 默认风,偏 SaaS | Linear + Warp 混合 — 程序员极客感 |
+| 字体 | 系统默认 | Inter (UI) + JetBrains Mono (机器值) |
+| 信息密度 | 中等 | 高密度(13px / 16px gap),Linear 列表风 |
+| 间隔 | 卡片堆叠(圆角阴影) | 1px edge-to-edge 分隔 |
+| 模板 | 无 | 6 内置模板 + 可勾选要点 + 用户另存 (localStorage) |
+| 类型字段 | 6 chip 多选(独立字段) | 类型 + 二级模板下拉,作为 form 起点 |
+| 数字字段 | text input | stepper [− N +],支持单位切换(分钟/小时 0.5 步长) |
+| 项目路径 | text input | text + Browse 按钮 + 模态目录选择器 |
+| 时间预览 | 仅"近 3 次" | 实时预览句("每月 1、15 号 09:00 · 19:00") + 近 3 次 |
+| 命令/路径 | 普通字体 | monospace + $ / ~ 提示符 |
+| 状态 token | 无 | tok-ok / tok-warn / tok-err / tok-accent(Warp 风) |
+| 暗/亮 切换 | 已有 | 保留,优化色板(纯黑偏蓝 / 纯白偏灰) |
+| Footer | GitHub + Power by | 同 + 键盘提示(S save · Cmd+Enter save&run) |
