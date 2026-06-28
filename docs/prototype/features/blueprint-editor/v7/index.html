@@ -583,7 +583,7 @@
         </div>
       </div>
 
-      <div class="row">
+      <div class="row" id="deadline-row">
         <label data-i18n="deadline_label">Loop 截止</label>
         <div>
           <input type="datetime-local" class="px-2 py-1.5 rounded"/>
@@ -634,7 +634,12 @@
       <div class="row">
         <label data-i18n="core_objective">目标 <span style="color:var(--danger)">*</span></label>
         <div>
-          <textarea rows="2" data-i18n-placeholder="core_objective_placeholder" placeholder="例:修复 Issue #123 / 让 main 分支保持健康" class="w-full px-3 py-2 rounded">保持 main 分支健康</textarea>
+          <textarea rows="2" id="core-objective-ta" data-i18n-placeholder="core_objective_placeholder" placeholder="例:修复 Issue #123 / 让 main 分支保持健康" class="w-full px-3 py-2 rounded">保持 main 分支健康</textarea>
+          <div class="flex items-center gap-2 mt-1">
+            <select id="objective-template-select" class="px-2 py-1 rounded text-[11px]" style="max-width:200px"><option value="">— 加载模板 —</option></select>
+            <button class="btn xsmall" data-action="save-objective-template">💾 保存为模板</button>
+            <button class="btn xsmall ghost" data-action="clear-objective">清空</button>
+          </div>
           <p class="text-dim text-[11px] mt-1" data-i18n="core_objective_desc">主目标,自然语言。也用作 Loop 显示名</p>
         </div>
       </div>
@@ -642,11 +647,23 @@
       <div class="row">
         <label data-i18n="core_success">成功标准 <span style="color:var(--danger)">*</span></label>
         <div>
+          <div class="flex flex-wrap gap-1.5 mb-2" id="success-chips">
+            <span class="chip tok-ok"><input type="checkbox" checked data-check="lint" onchange="updateSuccessCmd()" style="margin-right:4px"/> lint</span>
+            <span class="chip tok-ok"><input type="checkbox" checked data-check="test" onchange="updateSuccessCmd()" style="margin-right:4px"/> test</span>
+            <span class="chip tok-ok"><input type="checkbox" checked data-check="build" onchange="updateSuccessCmd()" style="margin-right:4px"/> build</span>
+            <span class="chip tok-ok"><input type="checkbox" data-check="typecheck" onchange="updateSuccessCmd()" style="margin-right:4px"/> typecheck</span>
+            <span class="chip tok-warn"><input type="checkbox" data-check="format" onchange="updateSuccessCmd()" style="margin-right:4px"/> format</span>
+            <span class="chip tok-warn"><input type="checkbox" data-check="security" onchange="updateSuccessCmd()" style="margin-right:4px"/> security scan</span>
+            <span class="chip tok-warn"><input type="checkbox" data-check="dep-audit" onchange="updateSuccessCmd()" style="margin-right:4px"/> dep audit</span>
+            <span class="chip tok-accent"><input type="checkbox" data-check="e2e" onchange="updateSuccessCmd()" style="margin-right:4px"/> e2e</span>
+            <span class="chip tok-accent"><input type="checkbox" data-check="snapshot" onchange="updateSuccessCmd()" style="margin-right:4px"/> snapshot</span>
+            <span class="chip tok-accent"><input type="checkbox" data-check="bundle" onchange="updateSuccessCmd()" style="margin-right:4px"/> bundle size</span>
+          </div>
           <div class="shell-wrap">
-            <textarea rows="2" class="w-full px-3 py-2 rounded mono">pnpm lint &amp;&amp; pnpm test &amp;&amp; pnpm build</textarea>
+            <textarea rows="2" id="success-cmd" class="w-full px-3 py-2 rounded mono text-[12px]">pnpm lint && pnpm test && pnpm build</textarea>
           </div>
           <div class="flex items-center justify-between mt-1">
-            <p class="text-dim text-[11px]" data-i18n="core_success_desc">客观可量化判定,机器可执行 shell 命令</p>
+            <p class="text-dim text-[11px]" data-i18n="core_success_desc">勾选预制项自动生成命令，也可手动编辑</p>
             <button class="btn ghost xsmall"><span>🧪</span> <span data-i18n="btn_dry_run">试跑</span></button>
           </div>
         </div>
@@ -661,7 +678,11 @@
               <button class="btn xsmall danger" data-action="remove-constraint" data-i18n="btn_remove">移除</button>
             </div>
           </div>
-          <button class="btn small" data-action="add-constraint">+ <span data-i18n="btn_add">添加</span></button>
+          <div class="flex items-center gap-2">
+            <button class="btn small" data-action="add-constraint">+ <span data-i18n="btn_add">添加</span></button>
+            <select id="constraint-template-select" class="px-2 py-1 rounded text-[11px]" style="max-width:200px"><option value="">— 加载模板 —</option></select>
+            <button class="btn xsmall" data-action="save-constraint-template">💾 保存为模板</button>
+          </div>
           <p class="text-dim text-[11px] mt-1" data-i18n="core_constraints_desc">硬约束,每条 1 行(例:不能改 API)</p>
         </div>
       </div>
@@ -786,6 +807,14 @@
                 <label><input type="checkbox" checked/> Bash</label>
               </div>
             </div>
+            <div class="row">
+              <label data-i18n="sdaf_output">阶段输出</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px] mb-1"><input type="checkbox" checked/> <span data-i18n="sdaf_output_enabled">记录本阶段产物</span></label>
+                <textarea rows="2" placeholder="预期输出: 上下文摘要 / 文件列表 / 环境变量快照" class="w-full px-3 py-2 rounded mono text-[11px]">上下文摘要: 文件结构 + README + 依赖声明</textarea>
+                <p class="text-dim text-[11px]" data-i18n="sdaf_output_desc">产物存入 state.yaml,可被下一阶段使用</p>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -819,6 +848,14 @@
             <div class="row">
               <label data-i18n="planner_max_tasks">最多任务/轮</label>
               <div class="stepper"><button>−</button><input value="5"/><button>+</button></div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_output">阶段输出</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px] mb-1"><input type="checkbox" checked/> <span data-i18n="sdaf_output_enabled">记录本阶段产物</span></label>
+                <textarea rows="2" placeholder="预期输出: 任务列表 / 优先级排序 / 预估 token" class="w-full px-3 py-2 rounded mono text-[11px]">任务列表: [{id, desc, priority, successCriteria}]</textarea>
+                <p class="text-dim text-[11px]" data-i18n="sdaf_output_desc">产物存入 state.yaml,可被下一阶段使用</p>
+              </div>
             </div>
           </div>
         </details>
@@ -866,6 +903,14 @@
                 </select>
               </div>
             </div>
+            <div class="row">
+              <label data-i18n="sdaf_output">阶段输出</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px] mb-1"><input type="checkbox" checked/> <span data-i18n="sdaf_output_enabled">记录本阶段产物</span></label>
+                <textarea rows="2" placeholder="预期输出: 文件改动 / 命令输出 / 错误日志" class="w-full px-3 py-2 rounded mono text-[11px]">文件改动: [edited, created, deleted] + 关键日志</textarea>
+                <p class="text-dim text-[11px]" data-i18n="sdaf_output_desc">产物存入 state.yaml,可被下一阶段使用</p>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -900,6 +945,14 @@
               <label data-i18n="sdaf_feedback_notify">反馈到通知</label>
               <div>
                 <label class="flex items-center gap-2 text-[12px]"><input type="checkbox" checked/> <span data-i18n="sdaf_feedback_notify_desc">行动阶段每完成一个任务,推送通知(详见块 4)</span></label>
+              </div>
+            </div>
+            <div class="row">
+              <label data-i18n="sdaf_output">阶段输出</label>
+              <div>
+                <label class="flex items-center gap-2 text-[12px] mb-1"><input type="checkbox" checked/> <span data-i18n="sdaf_output_enabled">记录本阶段产物</span></label>
+                <textarea rows="2" placeholder="预期输出: 验证报告 / 反思结论 / 决策(继续/重试/升级)" class="w-full px-3 py-2 rounded mono text-[11px]">验证报告: {taskCompleted, goalAchieved, nextAction, reasoning}</textarea>
+                <p class="text-dim text-[11px]" data-i18n="sdaf_output_desc">产物存入 state.yaml + 触发通知渠道</p>
               </div>
             </div>
           </div>
@@ -1330,6 +1383,7 @@ const I18N = {
     sdaf_act_tools: '行动 Tools',
     sdaf_feedback_notify: '反馈到通知',
     sdaf_feedback_notify_desc: '行动阶段每完成一个任务,推送通知(详见块 4)',
+    sdaf_output: '阶段输出', sdaf_output_enabled: '记录本阶段产物', sdaf_output_desc: '产物存入 state.yaml,可被下一阶段使用',
 
     // 通知事件(块 4)
     notify_on_progress_title: '进度通知(SDAF 阶段)',
@@ -1447,6 +1501,7 @@ const I18N = {
     sdaf_act_tools: 'Act Tools',
     sdaf_feedback_notify: 'Notify on feedback',
     sdaf_feedback_notify_desc: 'Push notification on each task completion during Act',
+    sdaf_output: 'Stage output', sdaf_output_enabled: 'Record stage artifact', sdaf_output_desc: 'Artifact saved to state.yaml, usable by next stage',
 
     sec_notification: 'Notification',
     sec_notification_desc: 'Who · Via what · What events',
@@ -1613,6 +1668,9 @@ function selectTriggerMode(mode) {
   Object.values(triggerPanels).forEach(el => { if (el) el.classList.add('hidden'); });
   // Show the selected panel
   if (triggerPanels[mode]) triggerPanels[mode].classList.remove('hidden');
+  // Hide deadline for manual trigger
+  const dlRow = document.getElementById('deadline-row');
+  if (dlRow) dlRow.classList.toggle('hidden', mode === 'manual');
 }
 document.querySelectorAll('.trigger-mode').forEach(b => {
   b.addEventListener('click', () => { if (b.disabled) return; selectTriggerMode(b.dataset.mode); });
@@ -1912,6 +1970,105 @@ function initSkills() {
   bindSkillRemove();
 }
 initSkills();
+
+// ============ 字段模板系统 ============
+function loadFieldTemplates() {
+  const saved = JSON.parse(localStorage.getItem('lc-field-templates') || '{}');
+  const objSelect = document.getElementById('objective-template-select');
+  const conSelect = document.getElementById('constraint-template-select');
+  // Objective templates
+  if (objSelect) {
+    objSelect.innerHTML = '<option value="">— 加载模板 —</option>';
+    (saved.objective || []).forEach((t, i) => {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = t.name;
+      objSelect.appendChild(opt);
+    });
+  }
+  // Constraint templates
+  if (conSelect) {
+    conSelect.innerHTML = '<option value="">— 加载模板 —</option>';
+    (saved.constraint || []).forEach((t, i) => {
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = t.name;
+      conSelect.appendChild(opt);
+    });
+  }
+}
+loadFieldTemplates();
+
+function saveObjectiveTemplate() {
+  const val = document.getElementById('core-objective-ta')?.value;
+  if (!val?.trim()) { alert('目标不能为空'); return; }
+  const name = prompt('模板名称:', '我的目标模板');
+  if (!name) return;
+  const saved = JSON.parse(localStorage.getItem('lc-field-templates') || '{}');
+  if (!saved.objective) saved.objective = [];
+  saved.objective.push({ name, value: val });
+  localStorage.setItem('lc-field-templates', JSON.stringify(saved));
+  loadFieldTemplates();
+}
+
+function saveConstraintTemplate() {
+  const rows = document.querySelectorAll('#constraints-list .constraint-row input');
+  const vals = Array.from(rows).map(i => i.value).filter(v => v.trim());
+  if (!vals.length) { alert('约束不能为空'); return; }
+  const name = prompt('模板名称:', '我的约束模板');
+  if (!name) return;
+  const saved = JSON.parse(localStorage.getItem('lc-field-templates') || '{}');
+  if (!saved.constraint) saved.constraint = [];
+  saved.constraint.push({ name, constraints: vals });
+  localStorage.setItem('lc-field-templates', JSON.stringify(saved));
+  loadFieldTemplates();
+}
+
+function loadFieldTemplate(type, idx) {
+  const saved = JSON.parse(localStorage.getItem('lc-field-templates') || '{}');
+  const list = saved[type] || [];
+  const t = list[idx];
+  if (!t) return;
+  if (type === 'objective') {
+    document.getElementById('core-objective-ta').value = t.value;
+  } else if (type === 'constraint') {
+    const list = document.getElementById('constraints-list');
+    list.innerHTML = '';
+    (t.constraints || []).forEach(c => {
+      list.innerHTML += `<div class="flex gap-2 constraint-row"><input type="text" value="${c}" class="flex-1 px-3 py-1.5 rounded"/><button class="btn xsmall danger" data-action="remove-constraint">移除</button></div>`;
+    });
+    bindConstraintAdd();
+  }
+}
+
+document.getElementById('objective-template-select')?.addEventListener('change', function() {
+  if (this.value !== '') loadFieldTemplate('objective', this.value);
+});
+document.getElementById('constraint-template-select')?.addEventListener('change', function() {
+  if (this.value !== '') loadFieldTemplate('constraint', this.value);
+});
+document.querySelector('[data-action="save-objective-template"]')?.addEventListener('click', saveObjectiveTemplate);
+document.querySelector('[data-action="save-constraint-template"]')?.addEventListener('click', saveConstraintTemplate);
+document.querySelector('[data-action="clear-objective"]')?.addEventListener('click', () => {
+  document.getElementById('core-objective-ta').value = '';
+});
+
+// ============ 成功标准预制校验 ============
+const CHECK_CMDS = {
+  lint: 'pnpm lint',
+  test: 'pnpm test',
+  build: 'pnpm build',
+  typecheck: 'pnpm typecheck',
+  format: 'pnpm format:check',
+  security: 'npm audit --production',
+  'dep-audit': 'npm audit',
+  e2e: 'pnpm test:e2e',
+  snapshot: 'pnpm test:snapshot',
+  bundle: 'pnpm bundle:analyze',
+};
+function updateSuccessCmd() {
+  const checked = Array.from(document.querySelectorAll('#success-chips input:checked')).map(i => i.dataset.check);
+  const cmd = checked.map(c => CHECK_CMDS[c] || c).join(' && ');
+  document.getElementById('success-cmd').value = cmd || '(空 = 不验证)';
+}
 
 document.querySelectorAll('[data-action="add-skill"]').forEach(btn => {
   btn.addEventListener('click', () => {
