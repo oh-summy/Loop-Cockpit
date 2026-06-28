@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Run #r_2025 · Loop Cockpit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  (function(){ const t = localStorage.getItem('lc-theme') || 'dark'; if (t==='dark') document.documentElement.classList.add('dark'); })();
+  tailwind.config = { darkMode: 'class' }
+</script>
+<style>
+  :root {
+    --bg:#fafafa; --surface:#f3f3f4; --surface-2:#ffffff; --border:#e6e6e8; --border-strong:#d4d4d8;
+    --fg:#0a0a0b; --fg-muted:#71717a; --fg-dim:#a1a1aa;
+    --accent:#7c5cff; --accent-soft:rgba(124,92,255,0.10); --accent-hover:#6d4ce6;
+    --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+    --term-bg:#000000; --term-fg:#e4e4e7;
+  }
+  .dark {
+    --bg:#0a0a0b; --surface:#141416; --surface-2:#1c1c20; --border:#202023; --border-strong:#2a2a2e;
+    --fg:#e4e4e7; --fg-muted:#71717a; --fg-dim:#52525b;
+    --accent-soft:rgba(124,92,255,0.15);
+    --term-bg:#000000; --term-fg:#e4e4e7;
+  }
+  * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; font-size: 13px; line-height: 1.5; transition: background .15s, color .15s; }
+  .mono, code, pre, .mono * { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace; font-feature-settings: 'liga' 0; }
+
+  .surface { background: var(--surface); }
+  .surface-2 { background: var(--surface-2); }
+  .border-1 { border: 1px solid var(--border); }
+  .border-t-1 { border-top: 1px solid var(--border); }
+  .border-b-1 { border-bottom: 1px solid var(--border); }
+  .text-muted { color: var(--fg-muted); }
+  .text-dim { color: var(--fg-dim); }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .12s; line-height: 1.2; }
+  .btn:hover { border-color: var(--border-strong); background: var(--surface); }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .btn.danger:hover { background: #dc2626; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
+  .btn.ghost:hover { background: var(--surface); color: var(--fg); }
+  .btn.small { padding: 4px 10px; font-size: 12px; }
+  .btn.xsmall { padding: 2px 6px; font-size: 11px; }
+  .btn.icon { padding: 5px 8px; }
+
+  .tok { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.02em; }
+  .tok-ok { background: rgba(16,185,129,.15); color: var(--ok); }
+  .tok-warn { background: rgba(245,158,11,.15); color: var(--warn); }
+  .tok-err { background: rgba(239,68,68,.15); color: var(--danger); }
+  .tok-accent { background: var(--accent-soft); color: var(--accent); }
+  .tok-running { background: var(--accent-soft); color: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
+
+  /* Stepper */
+  .stepper-state { display: flex; align-items: center; gap: 4px; }
+  .stepper-step { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--fg-muted); font-size: 12px; }
+  .stepper-step.done { background: rgba(16,185,129,.10); border-color: var(--ok); color: var(--ok); }
+  .stepper-step.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .stepper-step.failed { background: rgba(239,68,68,.10); border-color: var(--danger); color: var(--danger); }
+  .stepper-step .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .stepper-step.active .dot { animation: pulse 1.6s ease-in-out infinite; }
+  .stepper-arrow { color: var(--fg-dim); }
+
+  /* Sticky top bar */
+  .sticky-bar { position: sticky; top: 48px; z-index: 30; background: var(--bg); border-bottom: 1px solid var(--border); padding: 8px 0; }
+
+  /* Terminal */
+  .term-wrap { background: var(--term-bg); border-radius: 6px; border: 1px solid var(--border-strong); overflow: hidden; }
+  .term-header { display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--border); color: var(--fg-dim); font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+  .term-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .term { padding: 12px; height: 60vh; min-height: 400px; overflow-y: auto; color: var(--term-fg); font-family: 'JetBrains Mono', 'SF Mono', monospace; font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+  /* ANSI colors */
+  .ansi-red { color: #ff6b6b; }
+  .ansi-green { color: #51cf66; }
+  .ansi-yellow { color: #fcc419; }
+  .ansi-blue { color: #74c0fc; }
+  .ansi-magenta { color: #cc5de8; }
+  .ansi-cyan { color: #66d9e8; }
+  .ansi-gray { color: #868e96; }
+  .ansi-bold { font-weight: 600; }
+  .ansi-dim { opacity: 0.6; }
+
+  /* Cursor blink */
+  .cursor-blink::after { content: '▊'; color: var(--ok); animation: blink 1s steps(2, start) infinite; margin-left: 2px; }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* Decision panel */
+  .decision-panel { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: '▸ '; display: inline-block; transition: transform .15s; color: var(--fg-dim); }
+  details[open] > summary::before { transform: rotate(90deg); }
+
+  kbd { display: inline-flex; padding: 1px 5px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg-muted); font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1.4; box-shadow: 0 1px 0 var(--border); }
+</style>
+</head>
+<body>
+
+<!-- ===== Navbar ===== -->
+<header class="border-b-1 surface">
+  <div class="max-w-[1400px] mx-auto px-6 h-12 flex items-center gap-6">
+    <span class="font-semibold flex items-center gap-1.5 text-[14px]">
+      <span style="color:var(--accent)" class="mono">▸</span>
+      Loop Cockpit
+    </span>
+    <nav class="flex gap-1 text-[12px] text-muted">
+      <a href="#" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Dashboard</a>
+      <a href="#" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Blueprints</a>
+      <a href="#" class="px-2 py-1 rounded surface" style="color:var(--fg)">Runs</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
+      <button id="lang-toggle" class="btn ghost xsmall">
+        <span id="lang-icon">🌐</span><span id="lang-label">中</span>
+      </button>
+      <button id="theme-toggle" class="btn ghost xsmall">
+        <span id="theme-icon">🌙</span><span id="theme-label">dark</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== Sticky Top Bar (Run meta + state stepper + token/iter) ===== -->
+<div class="sticky-bar">
+  <div class="max-w-[1400px] mx-auto px-6">
+    <!-- Row 1: breadcrumb + actions -->
+    <div class="flex items-center gap-3 mb-2 text-[12px]">
+      <a href="#" class="text-muted hover:underline">Runs</a>
+      <span class="text-dim">/</span>
+      <span class="mono" id="run-id">r_2026_0628_1234</span>
+      <span class="tok tok-accent">Iter #1</span>
+      <span class="text-dim">·</span>
+      <a href="#" class="text-muted hover:underline" id="bp-link">📋 daily-lint</a>
+      <span class="text-dim">·</span>
+      <span class="text-muted">📁 ~/project/Loop-Cockpit</span>
+      <span class="ml-auto flex items-center gap-2 mono text-[11px] text-muted">
+        Started <span style="color:var(--fg)" id="started-at">14:23:08</span>
+        · Elapsed <span style="color:var(--fg)" id="elapsed">02:14</span>
+      </span>
+    </div>
+
+    <!-- Row 2: state stepper + token/iter -->
+    <div class="flex items-center gap-3 pb-2 flex-wrap">
+      <!-- Stepper -->
+      <div class="stepper-state">
+        <span class="stepper-step done"><span class="dot"></span>initializing</span>
+        <span class="stepper-arrow">→</span>
+        <span class="stepper-step active" id="state-running"><span class="dot"></span>running</span>
+        <span class="stepper-arrow">→</span>
+        <span class="stepper-step"><span class="dot"></span>evaluating</span>
+        <span class="stepper-arrow">→</span>
+        <span class="stepper-step"><span class="dot"></span>success</span>
+      </div>
+
+      <span class="text-dim">·</span>
+
+      <!-- Live metrics -->
+      <div class="flex items-center gap-3 text-[12px] mono">
+        <span class="text-muted">tokens</span>
+        <span><span id="tok-in" style="color:var(--ok)">12,345</span> in / <span id="tok-out" style="color:var(--warn)">6,789</span> out</span>
+        <span class="text-dim">·</span>
+        <span class="text-muted">cost</span>
+        <span style="color:var(--accent)" id="cost">$0.0234</span>
+        <span class="text-dim">/</span>
+        <span class="text-muted" id="budget">$1.00</span>
+        <span class="text-dim">·</span>
+        <span class="text-muted">retry</span>
+        <span><span id="retry-cnt">0</span>/3</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="ml-auto flex items-center gap-2">
+        <button class="btn small ghost"><kbd>L</kbd> Logs</button>
+        <button class="btn small ghost" id="btn-pause">⏸ Pause</button>
+        <button class="btn small danger" id="btn-stop">⏹ Stop</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Main: Goal + Terminal + Decision panel ===== -->
+<main class="max-w-[1400px] mx-auto px-6 py-4">
+
+  <!-- Goal callout -->
+  <details class="surface border-1 rounded mb-3" open>
+    <summary class="px-3 py-2 text-[12px] flex items-center gap-2">
+      <span class="text-muted">Goal</span>
+      <span class="text-[13px]">让 main 分支保持 lint + test + build 全绿</span>
+      <span class="ml-auto text-dim text-[11px]"><span class="tok tok-accent">🐛 Bug 修复</span></span>
+    </summary>
+    <div class="px-3 pb-3 border-t-1 pt-2 text-[12px] text-muted">
+      <div class="mb-1"><span class="text-dim">Done Criteria</span></div>
+      <pre class="mono text-[12px]" style="color:var(--fg)">$ pnpm lint && pnpm test && pnpm build</pre>
+    </div>
+  </details>
+
+  <!-- Terminal (Xterm) -->
+  <div class="term-wrap">
+    <div class="term-header">
+      <span class="term-dot" style="background:#ff5f56"></span>
+      <span class="term-dot" style="background:#ffbd2e"></span>
+      <span class="term-dot" style="background:#27c93f"></span>
+      <span class="ml-2">claude · pid 28341 · 120×30 · live</span>
+      <span class="ml-auto">
+        <span class="tok tok-running">● live</span>
+        <button class="btn ghost xsmall" id="btn-scroll-bottom">↓ Scroll</button>
+        <button class="btn ghost xsmall" id="btn-copy">📋 Copy</button>
+      </span>
+    </div>
+    <div class="term" id="term">
+<span class="ansi-gray">$ claude -p "让 main 分支保持 lint + test + build 全绿..."</span>
+<span class="ansi-cyan ansi-bold">Claude Code 2.1.177</span>
+<span class="ansi-gray">────────────────────────────────────────────</span>
+
+<span class="ansi-blue ansi-bold">▸ Reading project context...</span>
+  <span class="ansi-gray">✓ CLAUDE.md (3.2 KB)</span>
+  <span class="ansi-gray">✓ package.json (1.1 KB)</span>
+  <span class="ansi-gray">✓ Recent commits (last 10)</span>
+
+<span class="ansi-blue ansi-bold">▸ Planning tasks...</span>
+  1. Run <span class="mono ansi-yellow">pnpm lint</span> to check style
+  2. Run <span class="mono ansi-yellow">pnpm test</span> to verify tests
+  3. Run <span class="mono ansi-yellow">pnpm build</span> to confirm build
+
+<span class="ansi-blue ansi-bold">▸ Executing task 1: pnpm lint</span>
+<span class="ansi-gray">$ pnpm lint</span>
+
+<span class="ansi-green">✓ src/host/blueprint.ts</span>
+<span class="ansi-green">✓ src/host/runner.ts</span>
+<span class="ansi-green">✓ src/host/adapter.ts</span>
+<span class="ansi-red ansi-bold">✗ src/host/pty.ts:42:5</span>
+  <span class="ansi-red">'env' is defined but never used</span>
+  <span class="ansi-dim">42 |     const env = process.env;</span>
+  <span class="ansi-dim">       |     ^^^</span>
+<span class="ansi-red ansi-bold">✗ src/host/api.ts:18:1</span>
+  <span class="ansi-red">Missing return type on function</span>
+
+<span class="ansi-yellow ansi-bold">⚠ Lint failed (2 errors)</span>
+
+<span class="ansi-blue ansi-bold">▸ Analyzing errors...</span>
+  Both errors look fixable in <span class="mono ansi-cyan">@/src/host/pty.ts</span> and <span class="mono ansi-cyan">@/src/host/api.ts</span>
+
+<span class="ansi-blue ansi-bold">▸ Applying fix 1/2: remove unused 'env' in pty.ts</span>
+<span class="ansi-gray">  Edit src/host/pty.ts (delete line 42)</span>
+<span class="ansi-green">  ✓ Applied</span>
+
+<span class="ansi-blue ansi-bold">▸ Applying fix 2/2: add return type in api.ts</span>
+<span class="ansi-gray">  Edit src/host/api.ts (line 18): + : Promise&lt;void&gt;</span>
+<span class="ansi-green">  ✓ Applied</span>
+
+<span class="ansi-blue ansi-bold">▸ Re-running task 1: pnpm lint</span>
+<span class="ansi-gray">$ pnpm lint</span>
+<span class="ansi-green ansi-bold">✓ All files pass linting</span>
+
+<span class="ansi-blue ansi-bold">▸ Executing task 2: pnpm test</span>
+<span class="ansi-gray">$ pnpm test</span><span class="cursor-blink"></span>
+    </div>
+  </div>
+
+  <!-- Decision panel (only shown when failed) - 演示放在底部 collapsed -->
+  <div class="mt-4">
+    <div class="surface border-1 rounded p-4 hidden" id="failure-panel">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="tok tok-err">failed</span>
+        <span class="text-[13px] font-semibold">Run 失败 · 重试 3/3 次用完</span>
+        <span class="ml-auto text-[11px] text-dim mono">14:25:22 · 02:14 elapsed</span>
+      </div>
+      <p class="text-[12px] text-muted mb-3">最后错误片段(<a href="#" class="text-accent">查看完整 raw.log ↗</a>):</p>
+      <pre class="mono text-[11px] p-2 rounded border-1 mb-4" style="background:var(--term-bg);color:#ff6b6b">FAIL  src/host/runner.test.ts &gt; should transition to evaluating
+  AssertionError: expected 'running' to be 'evaluating'</pre>
+      <div class="decision-panel">
+        <button class="btn small primary">🔁 重跑 (新 Run)</button>
+        <button class="btn small">📁 进入 worktree</button>
+        <button class="btn small">📊 查看 diff</button>
+        <button class="btn small">🧠 查看推理链</button>
+        <button class="btn small">📥 下载 audit-trail.json</button>
+        <button class="btn small">⬆️ 升级到 Opus 重跑</button>
+      </div>
+    </div>
+
+    <!-- 当前是 running, 演示运行时简化面板 -->
+    <div class="surface border-1 rounded p-3 flex items-center gap-3" id="running-panel">
+      <span class="tok tok-running">● running</span>
+      <span class="text-[12px] text-muted">Agent 工作中 · 已运行 2 分 14 秒 · 待 evaluating 阶段</span>
+      <button class="btn ghost xsmall ml-auto" onclick="toggleDemoFail()">🎬 模拟失败 (Demo)</button>
+    </div>
+  </div>
+
+  <!-- Reasoning trail / Audit panel (折叠) -->
+  <details class="surface border-1 rounded mt-3">
+    <summary class="px-3 py-2 text-[12px]">
+      🧠 推理链 (5 步) · Tool calls (8 次) · Audit trail
+    </summary>
+    <div class="px-4 pb-3 border-t-1 pt-3 text-[12px]">
+      <div class="space-y-2 mono">
+        <div class="flex gap-2"><span class="text-dim">14:23:08</span><span class="tok tok-accent">step 1</span><span>plan tasks (3 items)</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:23:12</span><span class="tok tok-ok">tool</span><span>Read src/host/CLAUDE.md</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:23:14</span><span class="tok tok-ok">tool</span><span>Bash pnpm lint (exit 1, 2 errors)</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:23:45</span><span class="tok tok-ok">tool</span><span>Edit src/host/pty.ts (line 42)</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:23:52</span><span class="tok tok-ok">tool</span><span>Edit src/host/api.ts (line 18)</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:24:01</span><span class="tok tok-ok">tool</span><span>Bash pnpm lint (exit 0)</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:24:12</span><span class="tok tok-ok">tool</span><span>Bash pnpm test (running...)</span></div>
+        <div class="flex gap-2"><span class="text-dim">14:25:22</span><span class="tok tok-running">step 2</span><span>analyzing test output</span></div>
+      </div>
+      <div class="mt-3 pt-3 border-t-1 flex gap-2 text-[11px]">
+        <a href="#" class="text-accent hover:underline">📥 下载 audit-trail.json</a>
+        <a href="#" class="text-accent hover:underline">📥 下载完整 raw.log (1.2 MB)</a>
+      </div>
+    </div>
+  </details>
+
+</main>
+
+<!-- ===== Footer ===== -->
+<footer class="border-t-1 surface mt-8">
+  <div class="max-w-[1400px] mx-auto px-6 py-4 flex items-center text-[11px] text-dim gap-4 flex-wrap">
+    <span>Powered by <a href="https://github.com/oh-summy" target="_blank" class="hover:underline" style="color:var(--accent)">@oh-summy</a></span>
+    <span>·</span>
+    <a href="https://github.com/oh-summy/Loop-Cockpit" target="_blank" class="hover:underline">GitHub</a>
+    <a href="https://github.com/oh-summy/Loop-Cockpit/issues" target="_blank" class="hover:underline">Issues</a>
+    <span class="ml-auto">MIT · Local-first · No cloud</span>
+  </div>
+</footer>
+
+<script>
+// ============ Theme ============
+const themeToggle = document.getElementById('theme-toggle');
+const themeIcon = document.getElementById('theme-icon');
+const themeLabel = document.getElementById('theme-label');
+function applyTheme(t) {
+  if (t === 'dark') { document.documentElement.classList.add('dark'); themeIcon.textContent = '🌙'; themeLabel.textContent = 'dark'; }
+  else { document.documentElement.classList.remove('dark'); themeIcon.textContent = '☀️'; themeLabel.textContent = 'light'; }
+  localStorage.setItem('lc-theme', t);
+}
+themeToggle.onclick = () => applyTheme((localStorage.getItem('lc-theme') || 'dark') === 'dark' ? 'light' : 'dark');
+applyTheme(localStorage.getItem('lc-theme') || 'dark');
+
+// ============ Language ============
+const langToggle = document.getElementById('lang-toggle');
+const langLabel = document.getElementById('lang-label');
+langToggle.onclick = () => {
+  const cur = localStorage.getItem('lc-lang') || 'zh';
+  const next = cur === 'zh' ? 'en' : 'zh';
+  langLabel.textContent = next === 'zh' ? '中' : 'EN';
+  localStorage.setItem('lc-lang', next);
+};
+langLabel.textContent = (localStorage.getItem('lc-lang') || 'zh') === 'zh' ? '中' : 'EN';
+
+// ============ Live elapsed clock ============
+const startTime = new Date();
+startTime.setSeconds(startTime.getSeconds() - 134);  // 模拟已经跑了 2:14
+setInterval(() => {
+  const elapsed = Math.floor((new Date() - startTime) / 1000);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  document.getElementById('elapsed').textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}, 1000);
+
+// ============ Live token counter (模拟) ============
+let tokIn = 12345, tokOut = 6789;
+setInterval(() => {
+  tokIn += Math.floor(Math.random() * 50);
+  tokOut += Math.floor(Math.random() * 30);
+  document.getElementById('tok-in').textContent = tokIn.toLocaleString();
+  document.getElementById('tok-out').textContent = tokOut.toLocaleString();
+  const cost = (tokIn / 1000 * 0.003 + tokOut / 1000 * 0.015).toFixed(4);
+  document.getElementById('cost').textContent = '$' + cost;
+}, 2000);
+
+// ============ Live terminal output (模拟 chunk 推送) ============
+const term = document.getElementById('term');
+const messages = [
+  '<span class="ansi-green">  PASS</span>  src/host/blueprint.test.ts',
+  '<span class="ansi-green">  PASS</span>  src/host/adapter.test.ts',
+  '<span class="ansi-red ansi-bold">  FAIL</span>  src/host/runner.test.ts',
+  '<span class="ansi-dim">    ● should transition to evaluating</span>',
+  '<span class="ansi-red">      AssertionError: expected \'running\' to be \'evaluating\'</span>',
+  '',
+  '<span class="ansi-blue ansi-bold">▸ Test failed, analyzing root cause...</span>',
+  '<span class="ansi-gray">  Reading src/host/runner.ts:142...</span>',
+];
+let msgIdx = 0;
+const interval = setInterval(() => {
+  if (msgIdx >= messages.length) { clearInterval(interval); return; }
+  // 移除 cursor-blink 然后追加新内容并重新加 cursor
+  const blink = term.querySelector('.cursor-blink');
+  if (blink) blink.remove();
+  term.innerHTML += '\n' + messages[msgIdx];
+  // 加新的 cursor
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor-blink';
+  term.appendChild(cursor);
+  term.scrollTop = term.scrollHeight;
+  msgIdx++;
+}, 2200);
+
+// ============ Scroll to bottom ============
+document.getElementById('btn-scroll-bottom').onclick = () => {
+  term.scrollTop = term.scrollHeight;
+};
+
+// ============ Copy ============
+document.getElementById('btn-copy').onclick = () => {
+  navigator.clipboard.writeText(term.innerText);
+  const btn = document.getElementById('btn-copy');
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ Copied';
+  setTimeout(() => btn.innerHTML = orig, 1500);
+};
+
+// ============ Stop / Pause ============
+document.getElementById('btn-stop').onclick = () => {
+  if (confirm('确定停止当前 Run? Agent 进程将被 SIGKILL,Run 状态置为 stopped。')) {
+    clearInterval(interval);
+    const blink = term.querySelector('.cursor-blink');
+    if (blink) blink.remove();
+    term.innerHTML += '\n<span class="ansi-red ansi-bold">✗ 用户停止 (SIGKILL)</span>';
+  }
+};
+
+document.getElementById('btn-pause').onclick = () => {
+  alert('Pause 在 Iter 3 支持(需要 LangGraph 风格的 checkpoint)。当前 Iter 2 仅支持 Stop。');
+};
+
+// ============ Demo: 切换到失败状态 ============
+function toggleDemoFail() {
+  document.getElementById('running-panel').classList.add('hidden');
+  document.getElementById('failure-panel').classList.remove('hidden');
+  // 改 stepper
+  document.querySelectorAll('.stepper-step').forEach(s => s.classList.remove('done','active','failed'));
+  const steps = document.querySelectorAll('.stepper-step');
+  steps[0].classList.add('done');  // initializing
+  steps[1].classList.add('done');  // running
+  steps[2].classList.add('done');  // evaluating
+  steps[3].classList.add('failed');  // success → failed
+  steps[3].querySelector('.dot').nextSibling.textContent = ' failed';
+  // 添加红色 token
+  document.querySelector('.tok-running').className = 'tok tok-err';
+  document.querySelector('.tok-running').textContent = '✗ failed';
+}
+window.toggleDemoFail = toggleDemoFail;
+</script>
+</body>
+</html>

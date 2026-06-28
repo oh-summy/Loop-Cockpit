@@ -17,7 +17,9 @@
 
 | 原型 | 状态 | 关联 PRD |
 |---|---|---|
-| [ux-flow](features/ux-flow/) | Exploring | 多 PRD |
+| [blueprint-editor](features/blueprint-editor/) | Exploring (v4) | F002 |
+| [run-detail](features/run-detail/) | Exploring (v1) | F003 + F004 + F005 |
+| [ux-flow](features/ux-flow/) | Decided | 多个 |
 
 ## components/
 
