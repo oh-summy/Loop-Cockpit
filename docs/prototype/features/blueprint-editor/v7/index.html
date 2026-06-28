@@ -8,8 +8,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-  (function(){ document.documentElement.classList.add('dark'); })();
+  (function(){
+    document.documentElement.classList.add('dark');
+    // Theme: default dark, but respect toggle if user switched
+    const saved = localStorage.getItem('lc-theme');
+    if (saved === 'light') {
+      document.documentElement.classList.remove('dark');
+      updateThemeIcon(true);
+    }
+  })();
   tailwind.config = { darkMode: 'class' }
+  function updateThemeIcon(isLight) {
+    const icon = document.getElementById('theme-icon');
+    if (icon) icon.textContent = isLight ? '🌙' : '☀️';
+  }
 </script>
 <style>
   :root {
@@ -168,8 +180,11 @@
       <a href="../../run-detail/v3/index.html" class="px-2 py-1 rounded hover:bg-[var(--surface)]" data-i18n="nav_runs">运行记录</a>
     </nav>
     <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
-      <button id="lang-toggle" class="btn ghost xsmall">
-        <span>🌐</span><span id="lang-label">ZH</span>
+      <button id="theme-toggle" class="btn ghost xsmall" title="切换暗色/亮色">
+        <span id="theme-icon">☀️</span>
+      </button>
+      <button id="lang-toggle" class="btn ghost xsmall" title="切换语言">
+        <span id="lang-icon">🇨🇳</span>
       </button>
     </div>
   </div>
@@ -1226,19 +1241,22 @@ Round: {{run.round}} · Cost: ${{run.cost}}
 // ============ Theme ============
 const themeToggle = document.getElementById('theme-toggle');
 const themeIcon = document.getElementById('theme-icon');
-const themeLabel = document.getElementById('theme-label');
 function applyTheme(t) {
   if (t === 'dark') document.documentElement.classList.add('dark');
   else document.documentElement.classList.remove('dark');
-  themeIcon.textContent = t === 'dark' ? '🌙' : '☀️';
+  themeIcon.textContent = t === 'dark' ? '☀️' : '🌙';
   localStorage.setItem('lc-theme', t);
-  // i18n 会处理 themeLabel
 }
 themeToggle.onclick = () => {
-  applyTheme((localStorage.getItem('lc-theme')||'dark')==='dark'?'light':'dark');
-  applyLang(currentLang);  // 重新翻译以更新 theme label
+  const isDark = document.documentElement.classList.contains('dark');
+  applyTheme(isDark ? 'light' : 'dark');
 };
-applyTheme(localStorage.getItem('lc-theme') || 'dark');
+// Init icon state
+(function(){
+  const saved = localStorage.getItem('lc-theme');
+  if (saved === 'light') { applyTheme('light'); }
+  else { applyTheme('dark'); }
+})();
 
 // ============ i18n ============
 const I18N = {
@@ -1480,11 +1498,11 @@ const I18N = {
 
 let currentLang = localStorage.getItem('lc-lang') || 'zh';
 const langToggle = document.getElementById('lang-toggle');
-const langLabel = document.getElementById('lang-label');
+const langIcon = document.getElementById('lang-icon');
 
 function applyLang(lang) {
   currentLang = lang;
-  langLabel.textContent = lang === 'zh' ? '中' : 'EN';
+  langIcon.textContent = lang === 'zh' ? '🇨🇳' : '🇺🇸';
   localStorage.setItem('lc-lang', lang);
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   const d = I18N[lang];
