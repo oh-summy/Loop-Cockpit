@@ -329,10 +329,145 @@ Loop Cockpit 对应:
 
 ---
 
-## Appendix · 第二轮搜索 JSON 原始数据
+## 9. 补充:学术 Loop 形式化 + 工业 Evaluator 设计
 
-完整 JSON 见会话历史的 task-notification(`afc63952d5e2d7bd9`)。
-关键摘录:11 个项目的 Loop 抽象字段对照表,包含 LangGraph / LangChain AgentExecutor / AutoGen / CrewAI / Swarm / OpenAI Agents SDK / GPT Researcher / Aider / Claude Code / Cognition / OpenHermit。
+### 9.1 学术 Loop 的统一骨架
+
+5 篇核心论文 (Reflexion / Self-Refine / ReAct / Voyager / ToT) + Anthropic Building Effective Agents 全部围绕同一骨架:
+
+```
+Actor (生成) → Environment/Evaluator (观察) → Critic/Self-Reflection (判定) → Memory (持久化) → 终止 OR 迭代
+```
+
+**Reflexion** (arXiv 2303.11366) 把这个骨架命名最完整:
+- Actor `M_a` 生成 trajectory
+- Evaluator `M_e` 给分(pass / fail)
+- Self-Reflection `M_sr` 生成"言语强化信号"
+- 短期记忆 = trajectory history
+- 长期记忆 `mem` = self-reflection buffer (容量 1-3)
+- 终止条件: M_e pass 或 t ≥ max_trials
+
+**Anthropic Building Effective Agents** (Dec 2024) 给最简洁定义:
+> "LLMs using tools based on environmental feedback in a loop. ground truth from the environment at each step. Stopping conditions (such as a maximum number of iterations) to maintain control."
+
+**结论**: Loop Cockpit 缺的 **Evaluator 抽象** 是学术 + 工业共识的核心组件,不是"额外加分"。
+
+### 9.2 工业 Evaluator 7 类
+
+| 类别 | 来源 | 适用 |
+|---|---|---|
+| **Shell exit code** | Loop Cockpit 现状 | lint/test/build 等机器可验证 |
+| **Substring/regex** | Inspect AI `includes` | 输出包含特定字符串 |
+| **Position match** | Inspect AI `match` | 答案在特定位置 |
+| **Model-graded (LLM-judge)** | Inspect AI `model_graded_qa` / DeepEval G-Eval | 主观目标(可读性、文档清晰度) |
+| **Choice** | Inspect AI `choice` | 多选 |
+| **Threshold metric** | DeepEval (0-1 score, threshold 0.5) | 覆盖率等阈值 |
+| **Human review** | LangGraph `interrupt()` | 高风险改动 |
+
+**关键发现**:
+- LLM-as-judge 偏置: GPT-4 作 judge 与人类 80% 一致(arXiv 2306.05685),但有 position / verbosity / self-enhancement bias
+- Inspect AI 的 `Score / Value / Target / metric` 抽象值得借鉴
+- DeepEval **G-Eval** 让用户自然语言定义 evaluator,契合 Loop Cockpit "独立开发者友好"定位
+
+### 9.3 工业 Loop 决策点 5 类(超出"retry/stop")
+
+| 决策点 | 来源 | 含义 |
+|---|---|---|
+| **Retry** | LangGraph `RetryPolicy` | 重试 + 指数退避 + jitter |
+| **Fallback** | LangGraph `error_handler` | retries 耗尽后兜底节点 |
+| **Interrupt** | LangGraph `interrupt()` + `Command(resume=...)` | 人在环挂起 |
+| **Give up** | LangGraph 实践 `retry_count >= max_retries` 路由 | 彻底放弃 |
+| **Escalate** | Aider Architect 模式 | 升级 model (Sonnet → Opus) |
+
+**LangGraph RetryPolicy 完整字段**(Loop Cockpit retryPolicy 现状缺):
+`initial_interval / backoff_factor / max_interval / max_attempts / jitter / retry_on (异常类或 callable 谓词)`
+
+### 9.4 工业 Loop 完整 I/O 维度(扩展)
+
+#### 输入维度(Loop Cockpit 缺)
+
+| 字段 | 来源 | 必要性 |
+|---|---|---|
+| **runtimeContext** (Loop 内共享可变 state) | Vercel AI SDK | 🟡 P1 — step 间数据传递 |
+| **session / conversation_id** | OpenAI Agents SDK | 🟡 P1 — 多轮对话连续性 |
+| **input/output_guardrails** | OpenAI Agents SDK / CrewAI | 🟢 P2 — 安全过滤 |
+| **subagent_minimal_context** ⚠️ | Claude Code | sub-agent **不**继承父系统 prompt,只继承 cwd |
+
+#### 输出维度(Loop Cockpit 缺)
+
+| 字段 | 来源 | 必要性 |
+|---|---|---|
+| **StepResult schema** (每步结构化) | Vercel AI SDK | 🟡 P1 |
+| **token cost 三维** (usage / tool_call_count / model — 80% 方差由此 explain) | Anthropic multi-agent | 🟡 P1 |
+| **lifecycle events** (onStart/onStep/onTool/...) | Vercel AI SDK | 🟡 P1 |
+| **citations** (CitationAgent post-pass) | Anthropic multi-agent | 🟢 P2 |
+
+#### LangChain 上下文工程 4 动作
+
+> Context Engineering = **Write / Select / Compress / Isolate** (LangChain Jul 2025)
+
+| 动作 | 含义 | Loop Cockpit 落地 |
+|---|---|---|
+| Write | scratchpad / Memory | Iter 5 |
+| Select | 按相关性从 Memory / 工具挑 | Iter 5 FTS5 |
+| Compress | 历史摘要(Claude Code auto-compact 95% 触发) | Iter 5+ |
+| Isolate | sandbox / multi-field state | 已部分:Worktree |
+
+### 9.5 终止条件多元化(AutoGen 4 类 + AND/OR 组合)
+
+```
+(MaxMsg(10) | TextMention("DONE")) & TokenUsage(1000)
+```
+
+- `MaxMessageTermination(n)`
+- `TextMentionTermination("DONE")`
+- `TokenUsageTermination(budget)`
+- `HandoffTermination(target_agent)`
+
+**Iter 3+ 启示**: Done Criteria 抽象成多元终止条件之一。
+
+---
+
+## 10. 主要来源(完整列表)
+
+**Loop Engineering 思想源**:
+- [Addy Osmani Loop Engineering](https://addyosmani.com/blog/loop-engineering)
+- [Peter Steinberger 推文](https://twitter.com/steipete)
+- [Boris Cherny @ Acquired](https://www.productmarketfit.tech/p/stop-prompting-ai-and-start-building)(二手)
+- [Simon Willison "tools in a loop"](https://simonwillison.net/2025/Sep/18/agents)
+- [Geoffrey Huntley Ralph](https://ghuntley.com/ralph)
+- [Osmani agent-harness-engineering](https://addyosmani.com/blog/agent-harness-engineering)
+
+**框架对比**:
+- [LangGraph](https://docs.langchain.com/oss/python/langgraph/interrupts)
+- [OpenAI Agents SDK Runner](https://openai.github.io/openai-agents-python/ref/run)
+- [CrewAI Tasks](https://docs.crewai.com/v1.14.7/en/concepts/tasks)
+- [AutoGen GroupChat](https://docs.ag2.ai/latest/docs/api-reference/autogen/GroupChat)
+- [AutoGen Termination](https://microsoft.github.io/autogen/stable/user-guide/agentchat-user-guide/tutorial/termination.html)
+- [OpenAI Swarm](https://github.com/openai/swarm)
+- [Claude Code subagent](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
+- [OpenHermit (TS 47 stars)](https://github.com/HCF-STUDIOS/openhermit)
+- [GPT Researcher](https://docs.gptr.dev/docs/gpt-researcher/multi_agents/langgraph)
+- [Aider edit-formats](https://aider.chat/docs/more/edit-formats.html)
+- [Cognition Don't Build Multi-Agents](https://cognition.com/blog/dont-build-multi-agents) + [反转](https://cognition.ai/blog/multi-agents-working)
+- [Vercel AI SDK ToolLoopAgent](https://ai-sdk.dev/docs/foundations/agents)
+- [Anthropic Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)
+- [Anthropic Multi-Agent Research](https://www.anthropic.com/engineering/multi-agent-research-system)
+- [LangChain Context Engineering](https://www.langchain.com/blog/context-engineering-for-agents)
+
+**Evaluator / 评估**:
+- [Inspect AI Scorers](https://inspect.aisi.org.uk/scorers.html)
+- [DeepEval Metrics](https://deepeval.com/docs/metrics-introduction)
+- [Braintrust Eval](https://www.braintrust.dev/docs/guides/evals/write)
+- [Langfuse Scores](https://langfuse.com/docs/scores/overview)
+
+**学术论文**:
+- [Reflexion (arXiv 2303.11366)](https://arxiv.org/abs/2303.11366)
+- [Self-Refine (arXiv 2303.17651)](https://arxiv.org/abs/2303.17651)
+- [ReAct (arXiv 2210.03629)](https://arxiv.org/abs/2210.03629)
+- [Voyager (arXiv 2305.16291)](https://arxiv.org/abs/2305.16291)
+- [Tree of Thoughts (arXiv 2305.10601)](https://arxiv.org/abs/2305.10601)
+- [LLM-as-Judge biases (arXiv 2306.05685)](https://arxiv.org/abs/2306.05685)
 
 ## 修订记录
 
