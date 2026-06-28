@@ -198,10 +198,12 @@
       <a href="#" class="px-2 py-1 rounded hover:bg-[var(--surface)]">Runs</a>
     </nav>
     <div class="ml-auto flex items-center gap-2 text-[12px] text-muted">
+      <button id="lang-toggle" class="btn ghost xsmall">
+        <span id="lang-icon">🌐</span><span id="lang-label">中</span>
+      </button>
       <button id="theme-toggle" class="btn ghost xsmall">
         <span id="theme-icon">🌙</span><span id="theme-label">dark</span>
       </button>
-      <span class="mono">@oh-summy</span>
     </div>
   </div>
 </header>
@@ -318,9 +320,24 @@
     <div>
       <div class="seg">
         <button class="mode-tab active" data-mode="manual">Manual</button>
+        <button class="mode-tab" data-mode="once">一次性</button>
         <button class="mode-tab" data-mode="schedule">Schedule</button>
         <button class="mode-tab" data-mode="webhook" disabled>Webhook <span class="text-dim ml-1">Iter 4</span></button>
       </div>
+    </div>
+  </div>
+
+  <!-- Once panel -->
+  <div id="mode-once" class="mode-panel hidden">
+    <div class="row">
+      <label>触发时刻</label>
+      <div class="flex items-center gap-2">
+        <input type="datetime-local" id="once-datetime" class="px-2 py-1.5 rounded"/>
+        <button class="btn small" id="once-set-next-hour">下一个整点</button>
+        <button class="btn small" id="once-set-tomorrow-9">明天 09:00</button>
+      </div>
+      <div></div>
+      <div class="text-dim text-[11px] mt-1">一次性任务:到点运行一次,完成后 Blueprint 自动归档为 Done。</div>
     </div>
   </div>
 
@@ -603,8 +620,6 @@
     <span>·</span>
     <a href="https://github.com/oh-summy/Loop-Cockpit" target="_blank" class="hover:underline">GitHub</a>
     <a href="https://github.com/oh-summy/Loop-Cockpit/issues" target="_blank" class="hover:underline">Issues</a>
-    <a href="../../../README.zh-CN.md" class="hover:underline">中文</a>
-    <a href="../../../README.md" class="hover:underline">English</a>
     <span class="ml-auto">MIT · Local-first · No cloud</span>
   </div>
 </footer>
@@ -1124,42 +1139,229 @@ document.getElementById('tpl-save').onclick = () => {
 
 // ============ Preview sentence + Next fires ============
 function chineseDayName(n) { return ['日','一','二','三','四','五','六'][n]; }
+function pad(n) { return String(n).padStart(2, '0'); }
+
+// 把 [{date, h, m}] 转成"M月 D日 HH:MM"
+function formatFire(date, time) {
+  return `${date.getMonth()+1}月${date.getDate()}日 ${time}`;
+}
+
+// 把 "HH:MM" 字符串拆为 [h, m]
+function parseHM(t) { const [h, m] = t.split(':').map(Number); return { h, m }; }
+
+// 在指定日期 + 时间是否还在未来
+function isFuture(date, hm) {
+  const target = new Date(date);
+  target.setHours(hm.h, hm.m, 0, 0);
+  return target > new Date();
+}
+
+// 计算 daily 模式下未来 N 次触发
+function nextDailyFires(times, n=3) {
+  const out = [];
+  let day = 0;
+  const now = new Date();
+  while (out.length < n && day < 30) {
+    const date = new Date(now);
+    date.setDate(date.getDate() + day);
+    times.sort().forEach(t => {
+      if (out.length >= n) return;
+      const hm = parseHM(t);
+      const target = new Date(date);
+      target.setHours(hm.h, hm.m, 0, 0);
+      if (target > now) out.push(target);
+    });
+    day++;
+  }
+  return out;
+}
+
+// 每周模式下计算未来 N 次
+function nextWeeklyFires(days, times, n=3) {
+  const out = [];
+  const now = new Date();
+  for (let i = 0; i < 30 && out.length < n; i++) {
+    const date = new Date(now); date.setDate(date.getDate() + i);
+    if (!days.includes(date.getDay())) continue;
+    times.sort().forEach(t => {
+      if (out.length >= n) return;
+      const hm = parseHM(t);
+      const target = new Date(date);
+      target.setHours(hm.h, hm.m, 0, 0);
+      if (target > now) out.push(target);
+    });
+  }
+  return out;
+}
+
+// 每月模式
+function nextMonthlyFires(days, times, n=3) {
+  const out = [];
+  const now = new Date();
+  for (let i = 0; i < 365 && out.length < n; i++) {
+    const date = new Date(now); date.setDate(date.getDate() + i);
+    if (!days.includes(date.getDate())) continue;
+    times.sort().forEach(t => {
+      if (out.length >= n) return;
+      const hm = parseHM(t);
+      const target = new Date(date);
+      target.setHours(hm.h, hm.m, 0, 0);
+      if (target > now) out.push(target);
+    });
+  }
+  return out;
+}
+
+function formatTarget(d) {
+  const now = new Date();
+  const days = Math.floor((new Date(d.toDateString()) - new Date(now.toDateString())) / 86400000);
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (days === 0) return `今日 ${hm}`;
+  if (days === 1) return `明日 ${hm}`;
+  if (days === 2) return `后日 ${hm}`;
+  return `${d.getMonth()+1}月${d.getDate()}日 周${chineseDayName(d.getDay())} ${hm}`;
+}
+
 function updatePreview() {
   const sentenceEl = document.getElementById('preview-sentence');
   const nextEl = document.getElementById('next-fires');
   if (!sentenceEl) return;
   const mode = document.querySelector('.mode-tab.active')?.dataset.mode;
+
   if (mode === 'manual') {
     sentenceEl.textContent = '手动触发(无计划)';
     nextEl.innerHTML = '<div class="text-dim">仅在点击 Run now 时触发</div>';
     return;
   }
+  if (mode === 'once') {
+    const v = document.getElementById('once-datetime').value;
+    if (!v) { sentenceEl.textContent = '一次性 · 未设置时间'; nextEl.innerHTML = ''; return; }
+    const target = new Date(v);
+    sentenceEl.textContent = `一次性 · ${formatTarget(target)}(到点运行 1 次)`;
+    nextEl.innerHTML = `<div>· ${formatTarget(target)}</div>`;
+    return;
+  }
   const sched = document.querySelector('.sched-tab.active')?.dataset.sched;
-  let sentence = '', fires = [];
+  let sentence = '', fireDates = [];
+
   if (sched === 'daily') {
-    sentence = `每天 ${sel.daily.join(' · ')}`;
-    fires = ['今日 09:00','明日 09:00','后日 09:00'];
+    if (!sel.daily.length) { sentence = '每天 · 未选择时间'; }
+    else sentence = `每天 ${sel.daily.sort().join(' · ')}`;
+    fireDates = nextDailyFires(sel.daily);
   } else if (sched === 'weekly') {
-    const days = sel.weekDays.sort().map(d => '周' + chineseDayName(d)).join('、');
-    sentence = `每周 ${days} ${sel.weekly.join(' · ')}`;
-    fires = ['本周一 09:00','本周三 09:00','本周五 09:00'];
+    const days = sel.weekDays.slice().sort().map(d => '周' + chineseDayName(d)).join('、');
+    if (!sel.weekDays.length || !sel.weekly.length) sentence = '每周 · 选择不完整';
+    else sentence = `每周 ${days} ${sel.weekly.sort().join(' · ')}`;
+    fireDates = nextWeeklyFires(sel.weekDays, sel.weekly);
   } else if (sched === 'monthly') {
-    const days = sel.monthDays.sort((a,b)=>a-b).join('、');
-    sentence = `每月 ${days} 号 ${sel.monthly.join(' · ')}`;
-    fires = ['7月 1日 09:00','7月 15日 09:00','8月 1日 09:00'];
+    const days = sel.monthDays.slice().sort((a,b)=>a-b).join('、');
+    if (!sel.monthDays.length || !sel.monthly.length) sentence = '每月 · 选择不完整';
+    else sentence = `每月 ${days} 号 ${sel.monthly.sort().join(' · ')}`;
+    fireDates = nextMonthlyFires(sel.monthDays, sel.monthly);
   } else if (sched === 'interval') {
     const n = document.getElementById('ivl-n').value;
     const u = document.getElementById('ivl-unit').value === 'day' ? '天' : '周';
-    sentence = `每 ${n} ${u} 触发,起始 ${pickers.interval.get()}`;
-    fires = ['今日 13:00','3 天后 13:00','6 天后 13:00'];
+    const t = pickers.interval.get();
+    sentence = `每 ${n} ${u} 在 ${t} 触发`;
+    // 简单模拟
+    const now = new Date();
+    const hm = parseHM(t);
+    const start = new Date(now);
+    start.setHours(hm.h, hm.m, 0, 0);
+    if (start < now) start.setDate(start.getDate() + 1);
+    fireDates.push(new Date(start));
+    const step = u === '天' ? +n : +n * 7;
+    for (let i = 1; i < 3; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + step * i);
+      fireDates.push(d);
+    }
   } else if (sched === 'cron') {
-    sentence = `工作日 09:00 (Cron: 0 9 * * 1-5)`;
-    fires = ['明日 09:00','后日 09:00','大后日 09:00'];
+    const expr = document.getElementById('cron-expr').value;
+    sentence = `Cron · ${expr}(工作日 09:00 - 模拟解析)`;
+    // mock 数据
+    fireDates = nextWeeklyFires([1,2,3,4,5], ['09:00']);
   }
+
   sentenceEl.textContent = sentence;
-  nextEl.innerHTML = fires.map(f => `<div>· ${f}</div>`).join('');
+  nextEl.innerHTML = fireDates.length
+    ? fireDates.map(d => `<div>· ${formatTarget(d)}</div>`).join('')
+    : '<div class="text-dim">无可计算的触发时间</div>';
 }
 updatePreview();
+
+// ============ i18n (中/英 切换) ============
+const I18N = {
+  zh: {
+    nav: { dashboard: 'Dashboard', blueprints: 'Blueprints', runs: 'Runs' },
+    create: 'Create Blueprint', cancel: 'Cancel', save: 'Save', saveRun: 'Save & Run',
+    type: 'Type', template: 'Template',
+    sectionCore: 'Core', sectionTrigger: 'Trigger', sectionRetry: 'Retry Policy', sectionAdvanced: 'Advanced',
+    nameLabel: 'Name', goalLabel: 'Goal', doneLabel: 'Done', pathLabel: 'Path',
+    modeLabel: 'Mode', freqLabel: 'Frequency', timesLabel: 'Times', daysLabel: 'Days',
+    everyLabel: 'Every', startingLabel: 'Starting', cronLabel: 'Cron expr', previewLabel: 'Preview',
+    maxRetries: 'Max retries', timeout: 'Timeout', budget: 'Budget', onFail: 'On fail',
+    saveAsTpl: '💾 另存为我的模板',
+    builtinSection: '系统内置', userSection: '我的模板', noUserTpl: '(暂无)',
+    addPoints: '💡 加入要点:', addChecks: '💡 加入校验:',
+    dryRun: '🧪 Dry run', browse: '📁 Browse', addBtn: '+ Add', shortcuts: '快捷:',
+    fromNextMatch: '从下一个匹配时间开始',
+  },
+  en: {
+    nav: { dashboard: 'Dashboard', blueprints: 'Blueprints', runs: 'Runs' },
+    create: 'Create Blueprint', cancel: 'Cancel', save: 'Save', saveRun: 'Save & Run',
+    type: 'Type', template: 'Template',
+    sectionCore: 'Core', sectionTrigger: 'Trigger', sectionRetry: 'Retry Policy', sectionAdvanced: 'Advanced',
+    nameLabel: 'Name', goalLabel: 'Goal', doneLabel: 'Done', pathLabel: 'Path',
+    modeLabel: 'Mode', freqLabel: 'Frequency', timesLabel: 'Times', daysLabel: 'Days',
+    everyLabel: 'Every', startingLabel: 'Starting', cronLabel: 'Cron expr', previewLabel: 'Preview',
+    maxRetries: 'Max retries', timeout: 'Timeout', budget: 'Budget', onFail: 'On fail',
+    saveAsTpl: '💾 Save as my template',
+    builtinSection: 'Built-in', userSection: 'My templates', noUserTpl: '(empty)',
+    addPoints: '💡 Add points:', addChecks: '💡 Add checks:',
+    dryRun: '🧪 Dry run', browse: '📁 Browse', addBtn: '+ Add', shortcuts: 'Quick:',
+    fromNextMatch: 'From next matching time',
+  }
+};
+
+// 简单 i18n 切换:用 data-i18n-key 标记
+const langToggle = document.getElementById('lang-toggle');
+const langIcon = document.getElementById('lang-icon');
+const langLabel = document.getElementById('lang-label');
+function applyLang(lang) {
+  langLabel.textContent = lang === 'zh' ? '中' : 'EN';
+  localStorage.setItem('lc-lang', lang);
+  // 翻译核心标签
+  const dict = I18N[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    if (dict[key]) el.textContent = dict[key];
+  });
+}
+langToggle.onclick = () => applyLang((localStorage.getItem('lc-lang') || 'zh') === 'zh' ? 'en' : 'zh');
+applyLang(localStorage.getItem('lc-lang') || 'zh');
+
+// ============ 一次性模式 ============
+const onceDt = document.getElementById('once-datetime');
+if (onceDt) {
+  // 默认值 = 下一个整点
+  const d = new Date();
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  onceDt.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:00`;
+  onceDt.onchange = updatePreview;
+  document.getElementById('once-set-next-hour').onclick = () => {
+    const dt = new Date();
+    dt.setHours(dt.getHours() + 1, 0, 0, 0);
+    onceDt.value = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:00`;
+    updatePreview();
+  };
+  document.getElementById('once-set-tomorrow-9').onclick = () => {
+    const dt = new Date();
+    dt.setDate(dt.getDate() + 1); dt.setHours(9, 0, 0, 0);
+    onceDt.value = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    updatePreview();
+  };
+}
 </script>
 </body>
 </html>
