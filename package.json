@@ -1,0 +1,24 @@
+{
+  "name": "loop-cockpit",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Loop Engineering 控制驾驶舱 — 可视化设计、调度、监控 AI Agent 闭环工作流",
+  "license": "MIT",
+  "author": "Summy Wu <oh-summy>",
+  "scripts": {
+    "dev:host": "pnpm --filter @loop-cockpit/host dev",
+    "dev:web": "pnpm --filter @loop-cockpit/web dev",
+    "dev": "pnpm --parallel --filter @loop-cockpit/* dev",
+    "build:host": "pnpm --filter @loop-cockpit/host build",
+    "build:web": "pnpm --filter @loop-cockpit/web build",
+    "build": "pnpm --recursive build",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test",
+    "db:generate": "pnpm --filter @loop-cockpit/host db:generate",
+    "db:migrate": "pnpm --filter @loop-cockpit/host db:migrate",
+    "postinstall": "bash postinstall.sh"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

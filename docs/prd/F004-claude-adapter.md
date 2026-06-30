@@ -234,32 +234,61 @@ class PtyHarnessImpl {
 }
 ```
 
-### 6.3 WebSocket 协议
+### 6.3 WebSocket 协议(★ v0.4 更新,ADR-0011)
 
 ```
-客户端 → 服务端: { type: "subscribe", runId: "..." }
-服务端 → 客户端: { type: "data", chunk: "<raw ANSI string>" }
-服务端 → 客户端: { type: "exit", exitCode: 0 }
-服务端 → 客户端: { type: "error", message: "..." }
+客户端 → 服务端: { type: "subscribe", runId: "...", lastSeq?: number }
+服务端 → 客户端: { seq: number, type: "data", chunk: "<raw ANSI string>" }
+服务端 → 客户端: { seq: number, type: "exit", exitCode: 0 }
+服务端 → 客户端: { seq: number, type: "status", status: "running" }
+服务端 → 客户端: { seq: number, type: "budget", current: 0.5, limit: 1.0 }
+服务端 → 客户端: { seq: number, type: "phase_change", phaseId: "..." }
+服务端 → 客户端: { seq: number, type: "verification_result", result: {...} }
+服务端 → 客户端: { seq: number, type: "reflection_triggered", reason: "..." }
+服务端 → 客户端: { seq: number, type: "gate_requested", gate: {...} }
+服务端 → 客户端: { seq: number, type: "error", message: "..." }
+
+客户端 → 服务端: { type: "ack", lastSeq: N }  ← 重连恢复
+客户端 → 服务端: { type: "input", text: "..." }  ← 发送 prompt(Iter 3+ [y/N])
 ```
 
-Iter 2 用纯字符串 chunk(简单);Iter 5 加 binary frame 优化(如果实测有瓶颈)。
+**seq**: 单调递增,客户端用于 ACK 重连恢复。
 
-### 6.4 Token / Cost 估算
+**背压策略**: `ws.bufferedAmount > 128KB` 时暂停推送,等 `bufferedAmount < 64KB` 恢复。
 
-claude 的 `-p` 模式默认在退出前输出一个 usage 块(JSON 或 markdown,具体格式 Iter 2 实施时确认)。
+**重连恢复**: 客户端刷新后发送 `{type: "ack", lastSeq: N}`,服务端从 seq=N+1 继续推送。
+
+### 6.4 Token / Cost 估算(★ v0.4 更新,ADR-0011)
+
+`--output-format stream-json` 模式下,token usage 是结构化事件(`stream-json` 中的 `usage` 事件),直接从事件累积。不再用正则估。
 
 ```typescript
-estimateTokens(rawOutput: string): { input: number; output: number; costUsd: number } {
-  // 1. 优先解析 claude 自报的 usage block(末尾若干字节内 grep)
-  const match = rawOutput.match(/usage:\s*\{[^}]+\}/);
-  if (match) return parseClaudeUsage(match[0]);
-
-  // 2. fallback:字符数除以 4 估算
-  const chars = rawOutput.length;
-  return { input: chars / 8, output: chars / 4, costUsd: chars / 4 * 0.00001 };
+// 从 stream-json 的 usage 事件累积
+function onUsageEvent(event: StreamJsonUsageEvent) {
+  totalTokensIn += event.inputTokens;
+  totalTokensOut += event.outputTokens;
+  totalCostUsd += event.costUsd;
 }
 ```
+
+Fallback: 如果没有 stream-json usage 事件(旧版 claude),退回到正则解析 usage block(§6.4 原逻辑)。
+
+### 6.4.1 Orchestrator 中间层(★ v0.4 新增,ADR-0011)
+
+```typescript
+// apps/host/src/orchestrator/middleware.ts
+class OrchestratorMiddleware {
+  onToolCall(event: ToolCallEvent): boolean {
+    if (this.denyRules.match(event)) {
+      this.logPermissionDenied(event);
+      return false;  // 拒绝,写入 audit_events.event_type = "permission_denied"
+    }
+    return true;  // 放行
+  }
+}
+```
+
+在 stream-json 解析层之后、实际执行之前拦截 tool call,匹配 deny 规则后拒绝执行。
 
 ## 7. 验收标准 (Done Criteria)
 
@@ -296,3 +325,4 @@ estimateTokens(rawOutput: string): { input: number; output: number; costUsd: num
 | 2026-06-28 | v0.1 | 首版 Draft |
 | 2026-06-28 | v0.2 | ★ 加阶段执行命令模板,详细 flag 集见 §6.0。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |
 | 2026-06-28 | v0.3 | ★★ 加 Context Builder → Plugin Bundle 编排流程(§6.0.*),展示 Iter 4 起的完整 spawn 链路;ADR-0010 落地 |
+| 2026-06-28 | **v0.4** | **★ ADR-0011: WS 协议 seq + 4 种新事件类型 + 背压策略 + stream-json usage 解析 + OrchestratorMiddleware** |

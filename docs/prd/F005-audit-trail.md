@@ -67,7 +67,7 @@ PRD §K(可审计性)是用户**强烈强调**的 MVP 必备能力。理由:
 
 ## 6. 数据契约 / 接口
 
-### 6.0 8 层架构 audit 字段(★ v0.2 新增,ADR-0010)
+### 6.0 8 层架构 audit 字段(schemaVersion 2.0 — ★ 唯一 schema,ADR-0011)
 
 audit-trail.json 在 Run 终态时一次性写,**完整快照**所有层的决策路径:
 
@@ -161,61 +161,19 @@ audit-trail.json 在 Run 终态时一次性写,**完整快照**所有层的决�
 
 ### 6.1 落盘时机
 
+> **注**: 1.0 schema (§6.1 旧版) 已删除。唯一 schema 为 2.0 (§6.0)。(ADR-0011 P0-2)
+
 ```json
 {
-  "schemaVersion": "1.0",
-  "runId": "r_xxx",
-  "blueprintId": "bp_yyy",
-  "blueprintSnapshot": {
-    "id": "bp_yyy",
-    "name": "daily-lint",
-    "goal": "...",
-    "doneCriteria": "...",
-    "agent": "claude-code",
-    "model": "claude-sonnet-4-6",
-    "projectPath": "/Users/.../project",
-    "retryPolicy": { "maxRetries": 1, "timeoutMinutes": 10, "tokenBudget": "$1", "onFail": "stop" },
-    "triggers": [{ "type": "cron", "expression": "0 9 * * *" }]
-  },
-  "execution": {
-    "iteration": 0,
-    "startedAt": "2026-06-28T09:00:00.123Z",
-    "endedAt": "2026-06-28T09:03:45.789Z",
-    "durationMs": 225666,
-    "parentRunId": null,
-    "trigger": { "type": "cron", "firedAt": "2026-06-28T09:00:00.000Z" }
-  },
-  "systemPrompt": "<F003 拼装的完整 prompt>",
-  "agentOutput": {
-    "rawLogPath": "~/.loop-cockpit/runs/r_xxx/raw.log",
-    "rawLogBytes": 234567,
-    "exitCode": 0,
-    "tokensUsed": { "input": 12345, "output": 6789, "costUsd": 0.0234 }
-  },
-  "doneCriteriaEval": {
-    "command": "pnpm lint && pnpm test && pnpm build",
-    "exitCode": 0,
-    "passed": true,
-    "stdoutTail": "...",
-    "stderrTail": "",
-    "durationMs": 18234
-  },
-  "finalStatus": "success",
-  "errorSnippet": null,
-  "retryHistory": [
-    {
-      "iteration": 0,
-      "exitCode": 1,
-      "errorSnippet": "TypeError at...",
-      "doneCriteriaPassed": false
-    }
-  ]
+  "schemaVersion": "2.0",
+  "runId": "r_K8xL2pQm9",
+  "blueprintId": "bp_xxx",
+  "blueprintSnapshot": { /* 完整 Blueprint 配置(8 层) */ },
+  ...
 }
 ```
 
-`retryHistory` 数组只在 iteration > 0 时有内容,记录前几次重试的关键事实(不存完整 raw.log,文件路径已在 `agentOutput.rawLogPath`)。
-
-### 6.2 写入逻辑
+### 6.2 写入逻辑(★ v0.3 更新,ADR-0011)
 
 ```typescript
 // apps/host/src/audit/writer.ts
@@ -224,29 +182,11 @@ export async function writeAuditTrail(runId: string): Promise<void> {
   const bp = run.blueprintSnapshot;  // 已快照,不再 join blueprints
 
   const auditTrail: AuditTrail = {
-    schemaVersion: "1.0",
+    schemaVersion: "2.0",
     runId,
     blueprintId: run.blueprintId,
     blueprintSnapshot: bp,
-    execution: {
-      iteration: run.iteration,
-      startedAt: run.startedAt.toISOString(),
-      endedAt: run.endedAt.toISOString(),
-      durationMs: run.endedAt.getTime() - run.startedAt.getTime(),
-      parentRunId: run.parentRunId,
-      trigger: await loadTriggerContext(runId),
-    },
-    systemPrompt: await readSystemPrompt(runId),
-    agentOutput: {
-      rawLogPath: run.rawLogPath,
-      rawLogBytes: (await stat(run.rawLogPath)).size,
-      exitCode: run.exitCode,
-      tokensUsed: parseTokenCost(run.tokenCostUsd, ...),
-    },
-    doneCriteriaEval: run.doneCriteriaResult,
-    finalStatus: run.status,
-    errorSnippet: run.errorSnippet,
-    retryHistory: await loadRetryHistory(runId),
+    ...
   };
 
   const path = `${HOME}/.loop-cockpit/runs/${runId}/audit-trail.json`;
@@ -255,6 +195,8 @@ export async function writeAuditTrail(runId: string): Promise<void> {
   await db.update(runs).set({ auditStatus: "written" }).where(eq(runs.id, runId));
 }
 ```
+
+**写入失败语义(ADR-0011 P1-5)**: fire-and-forget + pino warn。audit_events 写入失败不影响 Run 执行。
 
 ### 6.3 REST API
 
@@ -282,8 +224,8 @@ export async function writeAuditTrail(runId: string): Promise<void> {
 ## 9. 开放问题
 
 - ⚠️ **Q · systemPrompt 包不包含敏感信息?**
-  - 倾向:**包含**。Audit 要绝对完整。用户自己决定 Blueprint 不放密钥(在 [non-goals §3](../architecture/non-goals.md) 有相关约束)
-  - 如果未来出问题,可以加可选 `--redact` 模式做下载时脱敏(Iter 7+)
+  - **包含**,但写入前经过 redact 正则脱敏(ADR-0011 P2-2)。原始版本保留在 raw.log。
+  - redact 正则: `api_key` / `bearer` / `password` / `authorization` 四类
 - ⚠️ **Q · auditStatus 字段加在 runs 表还是单独表?**
   - 倾向:加在 runs 表(简单),与 [F003 §6.2](./F003-run-state-machine.md) 的 schema 合并
 
@@ -293,3 +235,4 @@ export async function writeAuditTrail(runId: string): Promise<void> {
 |---|---|---|
 | 2026-06-28 | v0.1 | 首版 Draft |
 | 2026-06-28 | v0.2 | ★★ schema 升级到 2.0,加 8 层架构完整 trace 字段:rounds[] 每轮含 planner/taskExecutions/memoryDelta/reflection/humanGate(ADR-0010) |
+| 2026-06-28 | **v0.3** | **★ ADR-0011 收敛: 删 1.0 schema(只保留 2.0),fire-and-forget 写入语义,redact 正则脱敏前置到 Iter 2** |

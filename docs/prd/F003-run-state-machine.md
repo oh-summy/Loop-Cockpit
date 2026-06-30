@@ -85,17 +85,43 @@ Loop Engineering 的核心 = **目标驱动的自治闭环**。这个闭环的"�
 ### 6.1 状态机(主)
 
 ```
-                ┌─────────────────────────────────┐
-                ▼                                 │
-  idle ─→ initializing ─→ running ─→ evaluating ─┴─→ retrying (回到 running)
-                                          │
-                                          ├─→ success ─────────┐
-                                          └─→ failed           │
-                                                                │
-                              stopped(用户主动 Stop,任意状态可触发)─┘
+                ┌──────────┐
+                │  idle    │  ← 初始状态(空记录/从未触发)
+                └────┬─────┘
+                     │ POST /api/runs (不经过 idle,直接写 initializing)
+                ┌────▼─────┐
+                │initializ-│  ← reaper 复检窗口(Host 启动时扫描)
+                │  ing     │
+                └────┬─────┘
+                     │ system prompt 拼装完成
+                ┌────▼─────┐
+                │ running  │  ← 外层:Round 循环 / 内层:Phase 推进
+                └────┬─────┘
+                     │ Agent 退出
+                ┌────▼─────┐
+                │evaluating│  ← Done Criteria 评估
+                └────┬─────┘
+                     │ passed
+                ┌────▼─────┐
+                │ success  │  ← 终态
+                └──────────┘
+                     │ failed + retries left
+                ┌────▼─────┐
+                │retrying  │  ← iteration++, 回 running
+                └────┬─────┘
+                     │ retries exhausted
+                ┌────▼─────┐
+                │  failed  │  ← 终态
+                └──────────┘
+                     │ 用户 Stop(任意状态)
+                ┌────▼─────┐
+                │ stopped  │  ← 终态
+                └──────────┘
 ```
 
-非法迁移直接抛 `IllegalStateError`,不静默吞。
+**非法迁移直接抛 `IllegalStateError`,不静默吞。**
+
+> **Note**: `idle` 不是悬挂状态。`POST /api/runs` 创建 Run 时直接写 `status: "initializing"`,不经过 idle。idle 仅出现在 Run 被删除或从未被触发的空记录中。**reaper 复检窗口**: Host 启动时扫描 `status IN ('initializing', 'running', 'evaluating')` 的 Run,标记为 `failed(reason: "host-restart")`。
 
 ### 6.1.* Phase 子状态(★ v0.2 新增)
 
@@ -146,6 +172,9 @@ export const runs = sqliteTable("runs", {
   rawLogPath: text("raw_log_path"),
   tokenCostUsd: real("token_cost_usd"),
   doneCriteriaResult: text("done_criteria_result", { mode: "json" }).$type<DoneResult>(),
+
+  // ★ PID + reaper (ADR-0011 P1-4)
+  pid: integer("pid"),
 
   // ★ v0.2 新增 — Phase 编排
   claudeSessionId: text("claude_session_id"),            // 同一 Run 内跨 Phase 共享的 UUID
@@ -229,6 +258,41 @@ type RunStatus = "idle" | "initializing" | "running" | "evaluating" | "success" 
 type DoneResult = { passed: boolean; exitCode: number; stdoutTail: string; stderrTail: string; durationMs: number };
 ```
 
+### 6.2.* Round × Phase × status 关系(★ ADR-0011)
+
+| 概念 | 说明 |
+|---|---|
+| `runs.status` | 宏观状态: `running` 时内部在 Round × Phase 循环 |
+| `runs.current_round` | 当前 Round 编号(0-based) |
+| `runs.current_phase_id` | 当前 Phase ID(如果 phases[] 非空) |
+| `phase_history[]` | 已完成的 Phase 执行记录 |
+| `verification.nextAction` | 决定下一跳: |
+| | - `next-task` → 同一 Round 下一个 Task |
+| | - `replan` → Round++, 回到 Planner |
+| | - `retry` → 同一 Task 重试(Reflection 介入) |
+| | - `human` → Human Gate 触发,暂停 |
+| | - `terminal` → status → success |
+| | - `fail` → status → failed |
+
+### 6.2.* Timeout 双路径(★ ADR-0011)
+
+| 超时类型 | 字段 | 说明 |
+|---|---|---|
+| Agent 超时 | `retryPolicy.timeoutMinutes` | Agent 运行超时,SIGKILL → failed |
+| Done Criteria 超时 | `goal.budget.maxWallTimeMs` | 整个 Run 总时长超时 → failed |
+
+### 6.2.* state.yaml 原子写入(★ ADR-0011)
+
+```typescript
+async function writeStateYaml(runId: string, state: string): Promise<void> {
+  const tmpPath = `${stateDir}/${runId}.tmp.yaml`;
+  const finalPath = `${stateDir}/${runId}.yaml`;
+  await fs.writeFile(tmpPath, state, 'utf8');
+  await fs.fsyncSync(fs.openSync(tmpPath, 'w'));  // 同步 fsync
+  await fs.renameSync(tmpPath, finalPath);          // atomic rename
+}
+```
+
 ### 6.3 REST + WebSocket API
 
 | Method | Path | 说明 |
@@ -307,3 +371,5 @@ async function advanceRun(runId: string) {
 | 2026-06-28 | v0.1 | 首版 Draft |
 | 2026-06-28 | v0.2 | ★ 加 Phase 子状态机 + claudeSessionId / currentPhaseId / phaseHistory 字段。详见 [ADR-0009](../architecture/decisions/0009-phase-orchestration.md) |
 | 2026-06-28 | v0.3 | ★★ 加 Round-based 自治推进(ADR-0010):currentRound / goal快照 / budgetUsage / stateYamlPath / plannerHistory / verificationHistory / reflectionHistory / humanGateHistory 字段;Iter 2 仅用 Round + Memory + Verification 子集,其他层 Iter 3+ 加 |
+| 2026-06-28 | **v0.4** | **★ ADR-0011 收敛: 状态机完整迁移图 + idle 入口文档化 + pid 字段 + Round×Phase×status 关系表 + timeout 双路径 + state.yaml 原子写入** |
+| 2026-06-28 | **v0.5** | **★ 版本号统一格式** |

@@ -19,13 +19,19 @@ pnpm-debug.log*
 # Build
 dist/
 build/
+apps/*/dist/
 .vitepress/cache/
 .vitepress/dist/
+
+# Vite cache (per-workspace)
+.vite/
 
 # Env / secrets
 .env
 .env.local
 .env.*.local
+apps/*/.env
+apps/*/.env.local
 
 # Loop Cockpit runtime（一旦产品跑起来，这些目录是用户数据）
 .loop-cockpit/
@@ -35,8 +41,11 @@ build/
 spike/**/tmp/
 spike/**/.local/
 
-# Coverage / test artifacts
+# Testing
 coverage/
 .nyc_output/
 playwright-report/
 test-results/
+
+# PTY native bindings (may lose exec permission)
+node_modules/node-pty/prebuilds/*/spawn-helper

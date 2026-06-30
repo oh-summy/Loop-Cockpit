@@ -321,3 +321,4 @@ interface PhaseExecution {
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-06-28 | v1.0 | **Accepted** · 首版,基于 Claude Code 2.1 能力调研 + Loop Engineering 研究 |
+| 2026-06-28 | v1.1 | **★ ADR-0011: phases[] 是执行图,sdafStages[] 是默认值。Iter 2 默认线性 4 阶段。phases[] 为空时自动从 sdafStages[] 推导。** |

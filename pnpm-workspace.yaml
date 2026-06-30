@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+
+# pnpm v10+ — 显式允许这些包运行 install scripts(原生模块绑定)。
+# 其它包的 postinstall 默认被阻止,避免供应链风险。
+onlyBuiltDependencies:
+  - better-sqlite3
+  - node-pty
+  - esbuild

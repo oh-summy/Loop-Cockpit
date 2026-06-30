@@ -127,7 +127,7 @@ interface Goal {
   successCondition: string;      // 客观可量化,例 "pnpm test && git diff API/ 为空"
   deadline?: ISO8601;            // 截止时间,可选
   budget: {
-    maxRounds: number;           // 最多几轮 Loop(default 20)
+    maxRounds: number;           // 最多几轮 Loop(default 10, ADR-0011)
     maxTokensUSD: number;        // token 上限美元(default $1)
     maxWallTimeMs: number;       // 总时长(default 10min)
   };

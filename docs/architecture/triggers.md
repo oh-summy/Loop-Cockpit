@@ -1,11 +1,15 @@
 # Trigger 触发器总览
 
 > 一个 Loop 的"什么时候启动"清单。完整设计见 [ADR-0010 §触发器分类](./decisions/0010-autonomous-loop-architecture.md)。
-> 实施模块定义见 [overview §G](./overview.md) Scheduler & Trigger 总线。
+> **Trigger type 字符串以 [F002 §6.2 TriggerConfig](../prd/F002-blueprint-editor.md) 为唯一 Truth Source。**
 
 ---
 
 ## 1. 全部触发器(按 Iter)
+
+> ⚠️ 以下 type 值仅供参考,实施时以 F002 的 `TriggerConfig` TypeScript 类型为唯一来源。
+
+### Iter 2 (MVP)
 
 ### Iter 2 (MVP)
 
@@ -155,3 +159,4 @@ Blueprint 编辑器 Trigger 区域:
 | 日期 | 版本 | 变更 |
 |---|---|---|
 | 2026-06-28 | v1.0 | 首版,基于 ADR-0010 全 Trigger 枚举 + Iter 分配 |
+| 2026-06-28 | **v1.1** | **★ ADR-0011: Trigger type 字符串以 F002 为唯一 Truth Source,不再独立枚举** |
