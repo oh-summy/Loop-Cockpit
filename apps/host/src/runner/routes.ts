@@ -5,6 +5,7 @@ import { getDb } from '../db/connection';
 import { runs } from '../db/schema';
 import type { RunStatus } from '../db/types';
 import { startRun, stopRun } from './lifecycle';
+import { applySecurityHooks } from '../auth/per-route-security';
 
 const VALID_STATUSES: ReadonlySet<RunStatus> = new Set([
   'idle', 'initializing', 'running', 'evaluating',
@@ -12,6 +13,7 @@ const VALID_STATUSES: ReadonlySet<RunStatus> = new Set([
 ]);
 
 async function runnerRoutes(fastify: FastifyInstance) {
+  applySecurityHooks(fastify);
   // POST /api/runs — trigger a new run
   fastify.post('/', async (
     request: FastifyRequest<{ Body: { blueprintId: string; parentRunId?: string; reRunOf?: number } }>,

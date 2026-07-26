@@ -2,8 +2,15 @@
 /**
  * Shell evaluator — runs a command in a subprocess and checks exit code.
  * Used for done criteria (successCondition) evaluation.
+ *
+ * 安全模型（ADR-0011 §6）：
+ *  - 命令校验走单一可信来源 util/shell.ts::'isSafeCommand'
+ *  - spawnSync 用 shell:false，避免 shell 元字符注入
+ *  - 明确拒绝 sh -c / bash -c，只允许 sh -s（从 stdin 读提示）
+ *  - 命令必须是绝对路径或纯 basename（真实路径）
  */
 import { spawnSync } from 'child_process';
+import { isSafeCommand, splitCommand, sanitizeForJson, truncateUtf8 } from '../util/shell';
 
 export interface EvalResult {
   passed: boolean;
@@ -11,20 +18,6 @@ export interface EvalResult {
   stdoutTail: string;
   stderrTail: string;
   durationMs: number;
-}
-
-/** Allowed shell builtins for safe command execution. */
-const SAFE_BUILTINS = new Set(['sh', 'bash', 'python', 'python3', 'node', 'npx', 'pnpm', 'npm', 'yarn', 'cargo', 'go', 'make', 'cmake']);
-
-/** Validate a command string: must start with a safe builtin, no shell operators. */
-function isSafeCommand(cmd: string): boolean {
-  const parts = cmd.trim().split(/\s+/);
-  if (parts.length === 0) return false;
-  const base = parts[0].split('/').pop() ?? parts[0];
-  if (!SAFE_BUILTINS.has(base)) return false;
-  // Reject shell operators anywhere in the command
-  if (/[;|&`$(){}!<>\\\n\r]/.test(cmd)) return false;
-  return true;
 }
 
 /** Execute a shell command safely using spawnSync (no shell interpreter). */
@@ -44,16 +37,17 @@ export function evaluateShell(
   }
 
   const start = Date.now();
-  const parts = command.trim().split(/\s+/);
-  const cmd = parts.shift()!;
-  const args = parts;
+  const [cmd, args] = splitCommand(command);
+  // 复合命令走 sh -s：整条链通过 stdin 传入，退出码以末段为准。
+  const isShStdin = cmd === 'sh' && args[0] === '-s';
 
   try {
-    const result = spawnSync(cmd, args, {
+    const result = spawnSync(cmd, isShStdin ? [] : args, {
       cwd,
       timeout: timeoutMs,
       encoding: 'utf-8',
       maxBuffer: 1024 * 1024, // 1MB
+      ...(isShStdin ? { input: args[1] } : {}),
     });
 
     if (result.error) {
@@ -71,8 +65,8 @@ export function evaluateShell(
     return {
       passed: result.status === 0,
       exitCode: result.status ?? 1,
-      stdoutTail: sanitizeForJson(truncateTail(stdout, 4096)),
-      stderrTail: sanitizeForJson(truncateTail(stderr, 4096)),
+      stdoutTail: sanitizeForJson(truncateUtf8(stdout, 4096)),
+      stderrTail: sanitizeForJson(truncateUtf8(stderr, 4096)),
       durationMs: Date.now() - start,
     };
   } catch (err: any) {
@@ -84,15 +78,4 @@ export function evaluateShell(
       durationMs: Date.now() - start,
     };
   }
-}
-
-/** Sanitize string for JSON: remove control chars except newline/tab */
-function sanitizeForJson(s: string): string {
-  return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-}
-
-/** Get last N chars of a string */
-function truncateTail(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return str.slice(-maxLen);
 }

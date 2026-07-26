@@ -1,24 +1,100 @@
 /* apps/web/src/api/blueprints.ts */
+import { getCachedToken } from '../lib/bootstrap-token';
+
 const BASE = '/api';
 
+/** 与 host/src/blueprint/zod.ts:NotificationConfig 对齐 */
+export interface NotificationOnConfig {
+  success?: boolean;
+  failure?: boolean;
+  humanGate?: boolean;
+  budgetWarning?: boolean;
+  progress?: boolean;
+  progressEveryN?: number;
+  senseComplete?: boolean;
+  decideComplete?: boolean;
+  actComplete?: boolean;
+  feedbackComplete?: boolean;
+}
+
+export interface NotificationChannelConfig {
+  desktop?: boolean;
+  browser?: boolean;
+  email?: { to: string; smtp: { host: string; port: number; user?: string; pass?: { $secret: string } | string } };
+  lark?: { webhookUrl: { $secret: string } | string };
+  slack?: { webhookUrl: { $secret: string } | string };
+  discord?: { webhookUrl: { $secret: string } | string };
+  telegram?: { botToken: { $secret: string } | string; chatId: string };
+  skill?: { name: string; prompt: string };
+  cli?: { command: string };
+}
+
+export interface NotificationConfig {
+  on: NotificationOnConfig;
+  channels: NotificationChannelConfig;
+  template?: { titleTemplate?: string; bodyTemplate?: string; includeAuditLink?: boolean; includeRunLink?: boolean };
+}
+
+export interface ToolLayerConfig {
+  skills: string[];
+  tools: string[];
+  mcpServers: Array<{ name: string; command: string }>;
+  subagents: Array<{ name: string; prompt: string; tools?: string[] }>;
+  permissionMode: 'plan' | 'acceptEdits' | 'bypassPermissions' | 'interactive';
+  allowedDirs: string[];
+  disallowedTools?: string[];
+  systemPrompt?: string;
+}
+
+export interface SDAFStage {
+  phase: 'sense' | 'decide' | 'act' | 'feedback';
+  prompt: string;
+  skills: string[];
+  tools: string[];
+  permissionMode?: 'plan' | 'acceptEdits' | 'bypassPermissions' | 'interactive';
+  model?: string;
+  outputEnabled: boolean;
+  outputSpec: string;
+}
+
 export interface BlueprintInput {
-  goal: { objective: string; constraints: string[]; successCondition: string; deadline?: string; budget: { maxRounds: number; maxTokensUSD: number; maxWallTimeMs: number; maxTokensNum?: number; warnAtPercent?: number } };
+  goal: {
+    objective: string;
+    constraints: string[];
+    successCondition: string;
+    deadline?: string;
+    budget: {
+      maxRounds: number;
+      maxTokensUSD: number;
+      maxWallTimeMs: number;
+      maxTokensNum?: number;
+      warnAtPercent?: number;
+    };
+  };
   agent: 'claude-code' | 'opencode' | 'codex';
   model?: string;
   projectPath: string;
-  triggers: any[];
-  defaultToolLayer: { skills: string[]; tools: string[]; mcpServers: any[]; subagents: any[]; permissionMode: string; allowedDirs: string[]; disallowedTools?: string[]; systemPrompt?: string };
-  sdafStages: any[];
-  phases: any[];
+  triggers: Array<{ type: string; [k: string]: unknown }>;
+  defaultToolLayer: ToolLayerConfig;
+  sdafStages: SDAFStage[];
+  phases: Array<{ id: string; name: string; order: number; [k: string]: unknown }>;
   startPhaseId?: string;
-  plannerConfig?: any;
-  contextBuilderConfig?: any;
-  verificationConfig?: any;
-  memoryConfig?: any;
-  reflectionConfig?: any;
-  humanGateConfig?: any;
-  notification?: any;
-  deny?: any;
+  plannerConfig?: unknown;
+  contextBuilderConfig?: unknown;
+  verificationConfig?: unknown;
+  memoryConfig?: unknown;
+  reflectionConfig?: unknown;
+  humanGateConfig?: unknown;
+  notification?: NotificationConfig;
+  deny?: {
+    editPaths?: string[];
+    deletePaths?: string[];
+    strictBoundary?: boolean;
+    bashCommands?: string[];
+    customRules?: string[];
+    gitPush?: boolean;
+    gitCommit?: boolean;
+  };
   retryPolicy: { maxRetries: number; timeoutMinutes: number; onFail: 'stop' | 'notify' | 'escalate' };
   type: string[];
   status: 'active' | 'disabled';
@@ -33,7 +109,7 @@ export interface Blueprint {
   triggers: any[];
   defaultToolLayer: any;
   sdafStages: any[];
-  phases: any[];
+  phases: SDAFStage[];
   startPhaseId: string | null;
   plannerConfig: any;
   contextBuilderConfig: any;
@@ -41,7 +117,7 @@ export interface Blueprint {
   memoryConfig: any;
   reflectionConfig: any;
   humanGateConfig: any;
-  notification: any;
+  notification: NotificationConfig | null;
   deny: any;
   retryPolicy: any;
   type: string[];
@@ -50,9 +126,15 @@ export interface Blueprint {
   updatedAt: Date | null;
 }
 
-/** Fetch wrapper that throws on non-2xx responses. */
+/** Fetch wrapper: 自动带 x-loop-token + credentials，抛错带服务端返回文本 */
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const token = await getCachedToken().catch(() => '');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) headers['x-loop-token'] = token;
+  const res = await fetch(url, { ...init, headers, credentials: 'same-origin' });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${res.status} ${res.statusText}: ${text.slice(0, 500)}`);

@@ -1,0 +1,12 @@
+# Node / build
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Runtime data dir (DB, logs, audits, ws-token)
+.data/
+.loop-cockpit-logs/
+
+# Env
+.env
+.env.local

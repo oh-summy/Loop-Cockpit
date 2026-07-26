@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Iteration 2 MVP — 4 层自治闭环（2026-07-26）**：完成 Loop Cockpit 最小可用产品
+  - **Host（Fastify + Drizzle + SQLite + node-pty）**：Blueprint CRUD、Run 生命周期（`initializing→running→evaluating→success/failed/retrying/stopped`）、PTY harness 三向扇出（WS + raw.log + ring buffer）、shell evaluator 验证、audit trail JSON 落盘、token 鉴权 + CORS 白名单、Cron/Manual/Once trigger、boot reaper
+  - **Web（React + Vite + Xterm.js）**：Dashboard（实时 Run 卡片 + 统计 + 历史表格）、Blueprint 编辑器（简单/专家模式、6 -section 表单、`&&` 链成功标准生成）、Run 详情（状态 stepper + SDAF 阶段 + 实时 PTY 推流 + audit trail 下载）
+  - **DB（7 张表）**：blueprints / runs / audit_events / sessions / pending_gates / memories / notifications — 启动自动建表（`initDatabase`，`CREATE TABLE IF NOT EXISTS`）
+  - **MOCK_CLAUDE 模式**：不花钱跑通完整 `建 Loop → 运行 → 验证 → 落盘` 路径，便于演示和 CI
+  - 一键启停：`start.sh [--mock]` / `stop.sh`；`postinstall.sh` 兜底 node-pty native binding 编译
 - **文档结构重构 v1.0**（2026-06-27）：docs/ 改为 `architecture/` + `prd/` + `prototype/` 三层结构,带模板与索引
   - 删 7 个占位 README + 占位文件(原 docs/ 18 文件 2054 行 → 16 文件 ~1500 行)
   - 合并 whitepaper(214 行) → 进 `architecture/product-overview.md`

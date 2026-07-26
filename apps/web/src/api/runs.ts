@@ -1,7 +1,21 @@
 /* apps/web/src/api/runs.ts */
+import { getCachedToken } from '../lib/bootstrap-token';
+
 const BASE = '/api';
 
 export type RunStatus = 'idle' | 'initializing' | 'running' | 'evaluating' | 'success' | 'retrying' | 'failed' | 'stopped';
+
+export interface PhaseExecution {
+  phaseId: string;
+  startedAt: string;
+  endedAt?: string;
+  status: 'running' | 'evaluating' | 'passed' | 'failed' | 'skipped';
+  evaluatorResult?: unknown;
+  branchTaken?: string;
+  toolCallCount: number;
+  tokensIn: number;
+  tokensOut: number;
+}
 
 export interface Run {
   id: string;
@@ -15,14 +29,20 @@ export interface Run {
   currentRound: number;
   goal: any;
   budgetUsage: { tokensUsedUsd: number; roundsUsed: number; wallTimeMs: number };
-  phaseHistory: any[];
+  phaseHistory: PhaseExecution[];
   createdAt: Date | null;
   updatedAt: Date | null;
 }
 
-/** Fetch wrapper that throws on non-2xx responses. */
+/** Fetch wrapper: 自动带 x-loop-token + credentials，抛错带服务端返回文本 */
 async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const token = await getCachedToken().catch(() => '');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  if (token) headers['x-loop-token'] = token;
+  const res = await fetch(url, { ...init, headers, credentials: 'same-origin' });
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`API ${res.status} ${res.statusText}: ${text.slice(0, 500)}`);

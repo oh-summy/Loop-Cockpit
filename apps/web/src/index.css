@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Loop Cockpit design tokens (from prototype v7) ──────────────── */
+:root {
+  --bg: #0a0a0b;
+  --surface: #141416;
+  --surface-2: #1c1c20;
+  --border: #202023;
+  --border-strong: #2a2a2e;
+  --fg: #e4e4e7;
+  --fg-muted: #71717a;
+  --fg-dim: #52525b;
+  --accent: #7c5cff;
+  --accent-soft: rgba(124, 92, 255, 0.15);
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+}
+
+* { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+html, body { background: var(--bg); color: var(--fg); }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.mono { font-family: 'JetBrains Mono', 'SF Mono', ui-monospace, Menlo, monospace; }
+.surface { background: var(--surface); }
+.surface-2 { background: var(--surface-2); }
+.border-1 { border: 1px solid var(--border); }
+.border-t-1 { border-top: 1px solid var(--border); }
+.border-b-1 { border-bottom: 1px solid var(--border); }
+.text-muted { color: var(--fg-muted); }
+.text-dim { color: var(--fg-dim); }
+
+/* ── Buttons (from prototype) ────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--fg); cursor: pointer; font-size: 13px; font-weight: 500; transition: all .12s; }
+.btn:hover { border-color: var(--border-strong); background: var(--surface); }
+.btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn.primary:hover { background: #6d4ce6; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--fg-muted); }
+.btn.ghost:hover { background: var(--surface); color: var(--fg); }
+.btn.small { padding: 4px 10px; font-size: 12px; }
+.btn.xsmall { padding: 2px 6px; font-size: 11px; }
+.btn.danger:hover { color: var(--danger); border-color: var(--danger); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ── Status tokens (chips) ──────────────────────────────────────── */
+.tok { display:inline-flex; align-items:center; padding:1px 6px; border-radius:3px; font-family:'JetBrains Mono', monospace; font-size:10px; font-weight:500; letter-spacing:0.02em; }
+.tok-ok { background: rgba(16,185,129,0.15); color: var(--ok); }
+.tok-warn { background: rgba(245,158,11,0.15); color: var(--warn); }
+.tok-err { background: rgba(239,68,68,0.15); color: var(--danger); }
+.tok-accent { background: var(--accent-soft); color: var(--accent); }
+.tok-running { background: var(--accent-soft); color: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
+.tok-muted { background: rgba(113,113,122,0.2); color: var(--fg-muted); }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+/* ── Stat card / Run card ───────────────────────────────────────── */
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+.stat-num { font-family: 'JetBrains Mono', monospace; font-size: 28px; font-weight: 600; }
+.stat-label { font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.run-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px; transition: border-color 0.12s; cursor: pointer; }
+.run-card:hover { border-color: var(--accent); }
+
+/* ── Phase chips (SDAF) ─────────────────────────────────────────── */
+.phase-mini { display:inline-flex; align-items:center; gap:3px; padding:2px 6px; border-radius:3px; font-size:10px; background: var(--surface-2); border: 1px solid var(--border); font-family:'JetBrains Mono', monospace; }
+.phase-mini.done { background: rgba(16,185,129,0.08); color: var(--ok); border-color: rgba(16,185,129,0.3); }
+.phase-mini.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+.phase-mini.pending { color: var(--fg-dim); }
+.phase-mini.failed { background: rgba(239,68,68,0.10); color: var(--danger); border-color: rgba(239,68,68,0.3); }
+
+/* ── Row layouts ────────────────────────────────────────────────── */
+.bp-row { padding: 10px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.bp-row:hover { background: var(--surface); }
+
+table.runs-table { width: 100%; border-collapse: collapse; }
+table.runs-table th { text-align: left; padding: 8px 12px; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); font-weight: 600; }
+table.runs-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+table.runs-table tr { cursor: pointer; }
+table.runs-table tr:hover td { background: var(--surface); }
+
+/* ── Top nav (prototype-style, sticky) ──────────────────────────── */
+.lc-nav { border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 40; }
+.lc-nav-link { padding: 4px 10px; border-radius: 4px; font-size: 13px; color: var(--fg-muted); text-decoration: none; transition: all .12s; }
+.lc-nav-link:hover { color: var(--fg); background: var(--surface); }
+.lc-nav-link.active { color: var(--fg); background: var(--surface); }
+
+/* ── Forms ──────────────────────────────────────────────────────── */
+.input, .select, .textarea {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--fg);
+  font-size: 13px;
+  font-family: inherit;
+}
+.input:focus, .select:focus, .textarea:focus { outline: none; border-color: var(--accent); }
+.textarea { min-height: 80px; resize: vertical; font-family: 'JetBrains Mono', monospace; }
+.label { display: block; font-size: 11px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+
+/* ── Collapsible section (Editor 6 步) ──────────────────────────── */
+.section-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.section-head .num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; }
+.section-head .desc { color: var(--fg-muted); font-size: 12px; }
+
+/* ── Stepper input ─────────────────────────────────────────────── */
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.stepper button { background: transparent; border: 0; padding: 6px 10px; color: var(--fg-muted); cursor: pointer; font-size: 13px; }
+.stepper button:hover { color: var(--fg); background: var(--surface); }
+.stepper input { width: 60px; text-align: center; background: transparent; border: 0; color: var(--fg); padding: 6px 4px; font-size: 13px; }
+
+/* ── Chip list (skills/mcp/subagents) ───────────────────────────── */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-size: 11px; border: 1px solid var(--accent); }
+.chip button { background: transparent; border: 0; color: var(--accent); cursor: pointer; padding: 0 2px; }
+
+/* ── Success-criteria preset chips ──────────────────────────────── */
+.crit-chip { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; font-family: 'JetBrains Mono', monospace; font-size: 11px; transition: all .12s; }
+.crit-chip:hover { border-color: var(--accent); }
+.crit-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ── Run Detail specifics ───────────────────────────────────────── */
+.state-step { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; border: 1px solid var(--border); color: var(--fg-muted); background: var(--surface); }
+.state-step.done { color: var(--ok); border-color: rgba(16,185,129,0.4); background: rgba(16,185,129,0.05); }
+.state-step.active { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.state-arrow { color: var(--fg-dim); }
+
+.terminal-bar { background: #1a1a1d; border-top-left-radius: 8px; border-top-right-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-bottom: 0; }
+.terminal-dot { width: 11px; height: 11px; border-radius: 50%; }
+.terminal-dot.red { background: #ff5f57; }
+.terminal-dot.yellow { background: #febc2e; }
+.terminal-dot.green { background: #28c840; }

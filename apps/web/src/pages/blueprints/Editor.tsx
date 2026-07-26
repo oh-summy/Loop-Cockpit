@@ -1,6 +1,7 @@
 /* apps/web/src/pages/blueprints/Editor.tsx */
 import { useState } from 'react';
 import NavBar, { Tab } from '../../components/NavBar';
+import type { NotificationConfig, ToolLayerConfig, SDAFStage } from '../../api/blueprints';
 
 type TriggerMode = 'manual' | 'once' | 'schedule';
 type AgentEngine = 'claude-code' | 'opencode' | 'codex';
@@ -82,16 +83,46 @@ export default function Editor({ onNav, onRunCreated }: Props) {
 
   const [sdafStages, setSdafStages] = useState({ sense: true, decide: true, act: true, feedback: true });
 
+  // ── 生命周期表单（受控） ──
+  const [skillsText, setSkillsText] = useState('code-review, github-pr');
+  const [toolsText, setToolsText] = useState('Bash, Read, Edit');
+  const [mcpText, setMcpText] = useState('github, lark');
+  const [subagentsText, setSubagentsText] = useState('code-reviewer, test-writer');
+
+  // ── 通知表单（受控） ──
+  const [notifOn, setNotifOn] = useState<NotificationConfig['on']>({
+    success: true, failure: true, humanGate: true, budgetWarning: true, progress: false,
+  });
+  const [notifChannels, setNotifChannels] = useState<NotificationConfig['channels']>({
+    desktop: true, browser: true,
+  });
+  const [notifEmailTo, setNotifEmailTo] = useState('');
+  const [notifEmailHost, setNotifEmailHost] = useState('smtp.example.com');
+  const [notifEmailPort, setNotifEmailPort] = useState(587);
+  const [notifEmailUser, setNotifEmailUser] = useState('');
+  const [notifEmailPassRef, setNotifEmailPassRef] = useState('env:SMTP_PASS');
+  const [notifLarkRef, setNotifLarkRef] = useState('env:LARK_WEBHOOK_URL');
+  const [notifSlackRef, setNotifSlackRef] = useState('env:SLACK_WEBHOOK_URL');
+  const [notifDiscordRef, setNotifDiscordRef] = useState('env:DISCORD_WEBHOOK_URL');
+  const [notifTelegramTokenRef, setNotifTelegramTokenRef] = useState('env:TELEGRAM_BOT_TOKEN');
+  const [notifTelegramChatId, setNotifTelegramChatId] = useState('');
+  const [notifSkillName, setNotifSkillName] = useState('');
+  const [notifSkillPrompt, setNotifSkillPrompt] = useState('');
+  const [notifCliCmd, setNotifCliCmd] = useState('');
+
   const toggleSection = (key: string) => setOpenSections((p) => ({ ...p, [key]: !p[key] }));
 
   const toggleCriteria = (key: string) => {
     const next = { ...criteria, [key]: !criteria[key] };
     setCriteria(next);
-    const parts = Object.entries(next).filter(([_, v]) => v).map(([k]) => CMD_FOR_KEY[k]).filter(Boolean);
+    const parts = Object.entries(next).filter(([, v]) => v).map(([k]) => CMD_FOR_KEY[k]).filter(Boolean);
     setSuccessCmd(parts.join(' && '));
   };
 
   const displayName = objective.length > 10 ? objective.slice(0, 10) + '…' : objective;
+
+  // 解析逗号分隔列表（trim + 去空）
+  const parseCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
 
   const handleSave = async (runAfter: boolean) => {
     // Validate required fields
@@ -105,6 +136,57 @@ export default function Editor({ onNav, onRunCreated }: Props) {
     }
     // Filter out empty constraints
     const trimmedConstraints = constraints.filter((c) => c.trim());
+
+    // 构造 ToolLayer
+    const defaultToolLayer: ToolLayerConfig = {
+      permissionMode: 'plan',
+      skills: parseCsv(skillsText),
+      tools: parseCsv(toolsText),
+      mcpServers: parseCsv(mcpText).map((name) => ({ name, command: name })),
+      subagents: parseCsv(subagentsText).map((name) => ({ name, prompt: `You are ${name}.` })),
+      allowedDirs: [path],
+    };
+
+    // 构造 SDAF stages
+    const sdafStagesArr: SDAFStage[] = (['sense', 'decide', 'act', 'feedback'] as const)
+      .filter((s) => sdafStages[s])
+      .map((phase) => ({
+        phase,
+        prompt: '',
+        skills: [],
+        tools: [],
+        outputEnabled: true,
+        outputSpec: 'text',
+      }));
+
+    // 构造 Notification
+    const notification: NotificationConfig = {
+      on: { ...notifOn },
+      channels: { ...notifChannels },
+    };
+    if (notifEmailTo) {
+      notification.channels.email = {
+        to: notifEmailTo,
+        smtp: {
+          host: notifEmailHost,
+          port: notifEmailPort,
+          user: notifEmailUser || undefined,
+          pass: notifEmailPassRef ? { $secret: notifEmailPassRef } : undefined,
+        },
+      };
+    }
+    if (notifLarkRef) notification.channels.lark = { webhookUrl: { $secret: notifLarkRef } };
+    if (notifSlackRef) notification.channels.slack = { webhookUrl: { $secret: notifSlackRef } };
+    if (notifDiscordRef) notification.channels.discord = { webhookUrl: { $secret: notifDiscordRef } };
+    if (notifTelegramTokenRef && notifTelegramChatId) {
+      notification.channels.telegram = { botToken: { $secret: notifTelegramTokenRef }, chatId: notifTelegramChatId };
+    }
+    if (notifSkillName) {
+      notification.channels.skill = { name: notifSkillName, prompt: notifSkillPrompt };
+    }
+    if (notifCliCmd) {
+      notification.channels.cli = { command: notifCliCmd };
+    }
 
     const payload = {
       projectPath: path,
@@ -120,22 +202,14 @@ export default function Editor({ onNav, onRunCreated }: Props) {
         : trigger === 'once'
           ? [{ type: 'once' as const, at: '' }]
           : [{ type: 'cron' as const, expression: '0 9 * * *' }],
-      defaultToolLayer: {
-        permissionMode: 'plan' as const,
-        skills: [], tools: [], mcpServers: [], subagents: [],
-        allowedDirs: [path],
-      },
-      sdafStages: [
-        { phase: 'sense' as const, prompt: '', skills: [], tools: [], outputEnabled: true, outputSpec: 'text' },
-        { phase: 'decide' as const, prompt: '', skills: [], tools: [], outputEnabled: true, outputSpec: 'text' },
-        { phase: 'act' as const, prompt: '', skills: [], tools: [], outputEnabled: true, outputSpec: 'text' },
-        { phase: 'feedback' as const, prompt: '', skills: [], tools: [], outputEnabled: true, outputSpec: 'text' },
-      ],
+      defaultToolLayer,
+      sdafStages: sdafStagesArr,
       phases: [],
       retryPolicy: { maxRetries, timeoutMinutes: timeoutMin, onFail },
       deny: { strictBoundary, gitPush: gitPushAllowed, gitCommit: false },
       type: [typeKey],
       status: 'active' as const,
+      notification,
     };
     try {
       const { createBlueprint } = await import('../../api/blueprints');
@@ -298,20 +372,20 @@ export default function Editor({ onNav, onRunCreated }: Props) {
                         ))}
                       </div>
                       <div className="mb-4">
-                        <label className="label">Skills</label>
-                        <input className="input" placeholder="例：code-review, github-pr" />
+                        <label className="label">Skills (逗号分隔)</label>
+                        <input className="input" value={skillsText} onChange={(e) => setSkillsText(e.target.value)} placeholder="例：code-review, github-pr" />
                       </div>
                       <div className="mb-4">
-                        <label className="label">Tools</label>
-                        <input className="input" placeholder="例：Bash, Read, Edit" />
+                        <label className="label">Tools (逗号分隔)</label>
+                        <input className="input" value={toolsText} onChange={(e) => setToolsText(e.target.value)} placeholder="例：Bash, Read, Edit" />
                       </div>
                       <div className="mb-4">
-                        <label className="label">MCP Servers</label>
-                        <input className="input" placeholder="例：github, lark" />
+                        <label className="label">MCP Servers (逗号分隔)</label>
+                        <input className="input" value={mcpText} onChange={(e) => setMcpText(e.target.value)} placeholder="例：github, lark" />
                       </div>
                       <div>
-                        <label className="label">Subagents</label>
-                        <input className="input" placeholder="例：code-reviewer, test-writer" />
+                        <label className="label">Subagents (逗号分隔)</label>
+                        <input className="input" value={subagentsText} onChange={(e) => setSubagentsText(e.target.value)} placeholder="例：code-reviewer, test-writer" />
                       </div>
                     </>
                   )}
@@ -321,19 +395,131 @@ export default function Editor({ onNav, onRunCreated }: Props) {
                       <div className="mb-4">
                         <label className="label">通知渠道</label>
                         <div className="flex flex-wrap gap-2">
-                          {['桌面', '浏览器', 'Email', '飞书', 'Slack', 'CLI', 'Telegram', 'Discord'].map((c) => (
+                          {(['desktop', 'browser'] as const).map((c) => (
                             <label key={c} className="flex items-center gap-1 text-[12px]">
-                              <input type="checkbox" /> {c}
+                              <input
+                                type="checkbox"
+                                checked={!!notifChannels[c]}
+                                onChange={() => setNotifChannels((p) => ({ ...p, [c]: !p[c] }))}
+                              /> {c}
                             </label>
                           ))}
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.email}
+                              onChange={() => setNotifChannels((p) => ({ ...p, email: p.email ? undefined : { to: notifEmailTo, smtp: { host: notifEmailHost, port: notifEmailPort, user: notifEmailUser || undefined, pass: notifEmailPassRef ? { $secret: notifEmailPassRef } : undefined } } }))}
+                            /> Email
+                          </label>
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.lark}
+                              onChange={() => setNotifChannels((p) => ({ ...p, lark: p.lark ? undefined : { webhookUrl: { $secret: notifLarkRef } } }))}
+                            /> 飞书
+                          </label>
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.slack}
+                              onChange={() => setNotifChannels((p) => ({ ...p, slack: p.slack ? undefined : { webhookUrl: { $secret: notifSlackRef } } }))}
+                            /> Slack
+                          </label>
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.discord}
+                              onChange={() => setNotifChannels((p) => ({ ...p, discord: p.discord ? undefined : { webhookUrl: { $secret: notifDiscordRef } } }))}
+                            /> Discord
+                          </label>
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.telegram}
+                              onChange={() => setNotifChannels((p) => ({ ...p, telegram: p.telegram ? undefined : { botToken: { $secret: notifTelegramTokenRef }, chatId: notifTelegramChatId } }))}
+                            /> Telegram
+                          </label>
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.skill}
+                              onChange={() => setNotifChannels((p) => ({ ...p, skill: p.skill ? undefined : { name: notifSkillName, prompt: notifSkillPrompt } }))}
+                            /> Skill
+                          </label>
+                          <label className="flex items-center gap-1 text-[12px]">
+                            <input
+                              type="checkbox"
+                              checked={!!notifChannels.cli}
+                              onChange={() => setNotifChannels((p) => ({ ...p, cli: p.cli ? undefined : { command: notifCliCmd } }))}
+                            /> CLI
+                          </label>
                         </div>
                       </div>
+
+                      {notifChannels.email && (
+                        <div className="mb-4 surface-2 border-1 rounded p-3">
+                          <div className="text-[12px] mb-2 font-medium">Email 配置</div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input className="input" placeholder="收件人" value={notifEmailTo} onChange={(e) => setNotifEmailTo(e.target.value)} />
+                            <input className="input" placeholder="SMTP Host" value={notifEmailHost} onChange={(e) => setNotifEmailHost(e.target.value)} />
+                            <input className="input" placeholder="Port" type="number" value={notifEmailPort} onChange={(e) => setNotifEmailPort(parseInt(e.target.value) || 0)} />
+                            <input className="input" placeholder="User" value={notifEmailUser} onChange={(e) => setNotifEmailUser(e.target.value)} />
+                            <input className="input col-span-2 mono" placeholder="密码引用 (env:SMTP_PASS)" value={notifEmailPassRef} onChange={(e) => setNotifEmailPassRef(e.target.value)} />
+                          </div>
+                          <p className="text-dim text-[11px] mt-1">密码不入库，运行时从环境变量读取</p>
+                        </div>
+                      )}
+
+                      {notifChannels.lark && (
+                        <div className="mb-2">
+                          <label className="label">飞书 Webhook 引用</label>
+                          <input className="input mono" value={notifLarkRef} onChange={(e) => setNotifLarkRef(e.target.value)} placeholder="env:LARK_WEBHOOK_URL" />
+                        </div>
+                      )}
+                      {notifChannels.slack && (
+                        <div className="mb-2">
+                          <label className="label">Slack Webhook 引用</label>
+                          <input className="input mono" value={notifSlackRef} onChange={(e) => setNotifSlackRef(e.target.value)} placeholder="env:SLACK_WEBHOOK_URL" />
+                        </div>
+                      )}
+                      {notifChannels.discord && (
+                        <div className="mb-2">
+                          <label className="label">Discord Webhook 引用</label>
+                          <input className="input mono" value={notifDiscordRef} onChange={(e) => setNotifDiscordRef(e.target.value)} placeholder="env:DISCORD_WEBHOOK_URL" />
+                        </div>
+                      )}
+                      {notifChannels.telegram && (
+                        <div className="mb-2 grid grid-cols-2 gap-2">
+                          <input className="input mono" placeholder="Bot Token 引用" value={notifTelegramTokenRef} onChange={(e) => setNotifTelegramTokenRef(e.target.value)} />
+                          <input className="input mono" placeholder="Chat ID" value={notifTelegramChatId} onChange={(e) => setNotifTelegramChatId(e.target.value)} />
+                        </div>
+                      )}
+                      {notifChannels.skill && (
+                        <div className="mb-2 grid grid-cols-2 gap-2">
+                          <input className="input" placeholder="Skill 名称" value={notifSkillName} onChange={(e) => setNotifSkillName(e.target.value)} />
+                          <input className="input" placeholder="Skill Prompt" value={notifSkillPrompt} onChange={(e) => setNotifSkillPrompt(e.target.value)} />
+                        </div>
+                      )}
+                      {notifChannels.cli && (
+                        <div className="mb-2">
+                          <label className="label">CLI 命令</label>
+                          <input className="input mono" value={notifCliCmd} onChange={(e) => setNotifCliCmd(e.target.value)} placeholder="例如：say 'Loop done'" />
+                        </div>
+                      )}
+
                       <div className="mb-4">
                         <label className="label">触发事件</label>
                         <div className="flex flex-wrap gap-2">
-                          {['成功', '失败', 'Human Gate', '预算警告', '进度', 'SDAF 阶段完成'].map((e) => (
-                            <label key={e} className="flex items-center gap-1 text-[12px]">
-                              <input type="checkbox" defaultChecked /> {e}
+                          {([
+                            ['success', '成功'], ['failure', '失败'], ['humanGate', 'Human Gate'],
+                            ['budgetWarning', '预算警告'], ['progress', '进度'],
+                          ] as const).map(([k, label]) => (
+                            <label key={k} className="flex items-center gap-1 text-[12px]">
+                              <input
+                                type="checkbox"
+                                checked={!!notifOn[k]}
+                                onChange={() => setNotifOn((p) => ({ ...p, [k]: !p[k] }))}
+                              /> {label}
                             </label>
                           ))}
                         </div>

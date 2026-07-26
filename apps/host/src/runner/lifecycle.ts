@@ -24,6 +24,14 @@ const activeHandles = new Map<string, ptyHarness.PtyHandle>();
 /** True when claude CLI should be faked (avoids real API spend in dev/CI). */
 const MOCK_CLAUDE = process.env.MOCK_CLAUDE === '1';
 
+/**
+ * 进程退出策略：先 SIGTERM，等 graceMs 再 SIGKILL。
+ * node-pty 的子进程不是 PG leader（posix_spawnp 没有 setsid），
+ * 所以不能指望 process.kill(-pid)。
+ * 这里的策略：PTY 退出回调里直接 kill(pid)，不再尝试 kill(-pid)。
+ */
+const SIGKILL_GRACE_MS = Number(process.env.SIGKILL_GRACE_MS ?? '4000');
+
 type BlueprintRow = typeof blueprints.$inferSelect;
 type RunRow = typeof runs.$inferSelect;
 
@@ -170,11 +178,18 @@ async function advanceToRunning(id: string): Promise<void> {
     // Fake agent: stream a few lines over ~2s so WS clients can attach and
     // actually see output. Verifies the full fan-out chain without spending
     // real claude API budget.
-    command = 'sh';
-    args = [
-      '-c',
-      `for i in 1 2 3 4 5 6 7 8 9 10; do echo "[mock-claude r=${id}] step $i/10 $(date '+%H:%M:%S')"; sleep 0.8; done`,
-    ];
+    // node -e '...' 比 bash -c 安全得多（shell:false 下没有 shell 介入）。
+    // 比基于 stdin 的 sh -s 更可控——避免 cross-shell 兼容问题。
+    // Mock agent：用 node 跑一段 async 脚本，模拟 claude 在 PTY 里流式输出。
+    // 注意：脚本通过 stdin 传给 node -e（见下方 spawn 调用），不走 shell 分词。
+    command = 'node';
+    const mockScript = `
+      for (let i = 1; i <= 10; i++) {
+        console.log('[mock-claude] step ' + i + '/10');
+        await new Promise(r => setTimeout(r, 800));
+      }
+    `;
+    args = ['-e', mockScript];
   } else {
     command = 'claude';
     args = ['-p', snapshot?.goal?.objective ?? '', '--bare', '--output-format', 'stream-json', '--verbose'];
@@ -354,7 +369,10 @@ export async function evaluateRun(
 }
 
 /**
- * Stop a running run: kill PTY handle (or process group), transition to stopped.
+ * Stop a running run: kill PTY handle (or fallback kill by pid), transition to stopped.
+ *
+ * node-pty 子进程通常不是 PG leader，禁掉 kill(-pid)——否则可能杀到同 pgid 的无关进程。
+ * 策略：	handle 托管优先；否则发 SIGTERM，grace 后再补 SIGKILL。
  */
 export async function stopRun(id: string, pid?: number): Promise<void> {
   const db = getDb();
@@ -364,16 +382,20 @@ export async function stopRun(id: string, pid?: number): Promise<void> {
   if (handle) {
     handle.kill();
     activeHandles.delete(id);
-  } else if (pid && Number.isInteger(pid) && pid > 0) {
+    pid = undefined; // 已托管，不要再 kill pid
+  }
+
+  if (pid && Number.isInteger(pid) && pid > 0) {
     try {
-      process.kill(-pid, 'SIGKILL');
-    } catch (err: unknown) {
-      try {
-        process.kill(pid, 'SIGKILL');
-      } catch {
-        // already gone
-      }
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      // already gone
     }
+    // grace 后再 SIGKILL
+    const grace = SIGKILL_GRACE_MS;
+    setTimeout(() => {
+      try { process.kill(pid!, 'SIGKILL'); } catch { /* already gone */ }
+    }, grace);
   }
 
   const updated = await updateRunStatus(id, 'stopped');

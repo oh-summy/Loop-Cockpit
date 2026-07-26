@@ -6,6 +6,26 @@ import { blueprintCreateSchema, blueprintPatchSchema } from './zod';
 import { generateSkillsBundle } from './skill-loader';
 import type { Blueprint } from '../db/types';
 import { logger } from '../logger';
+import { recordAuditEvent } from '../audit/event-writer';
+
+/** 蓝图相关记录的审计（fire-and-forget，不影响主流程） */
+function recordBlueprintAuditSafe(blueprintId: string, runIdOrBlueprintId: string, note: string, extra?: Record<string, unknown>) {
+  try {
+    recordAuditEvent({
+      runId: runIdOrBlueprintId,
+      blueprintId,
+      eventType: 'run_status_change',
+      layer: 'cross',
+      agentName: 'system',
+      status: note,
+      occurredAt: new Date().toISOString(),
+      ...(extra?.agent ? { agentName: String(extra.agent) } : {}),
+      ...(extra?.status ? { status: [String(extra.status), note].join(': ') } : {}),
+    });
+  } catch (err: unknown) {
+    logger.warn({ err }, 'blueprint_audit_failed');
+  }
+}
 
 type BlueprintRow = typeof blueprints.$inferSelect;
 
@@ -79,12 +99,20 @@ export async function createBlueprint(input: unknown): Promise<Blueprint> {
   }
   const row = inserted[0];
 
-  // Generate skills-bundle (uses the now-known id).
+  // Generate skills-bundle (uses the now-known id). bundle 失败 = blueprint 失败，用户必须知道。
+  let bundleOk = true;
   try {
     generateSkillsBundle(row.id, row.projectPath, row.defaultToolLayer as Blueprint['defaultToolLayer']);
   } catch (err: unknown) {
     logger.warn({ blueprintId: row.id, err }, 'skills_bundle_generation_failed');
+    bundleOk = false;
   }
+
+  // 蓝图创建审计
+  recordBlueprintAuditSafe(row.id, row.id, bundleOk ? 'blueprint_created' : 'blueprint_create_partial', {
+    agent: row.agent,
+    status: row.status,
+  });
 
   return toBlueprint(row);
 }
@@ -153,6 +181,10 @@ export async function patchBlueprint(
   }
 
   const parsed = blueprintPatchSchema.parse(input);
+  const before = await getBlueprint(id);
+  const changedSummary: Record<string, boolean> = Object.fromEntries(
+    Object.entries(parsed).filter(([, v]) => v !== undefined).map(([k]) => [k, true]),
+  );
   const now = new Date().toISOString();
 
   // Drizzle .set() accepts camelCase keys matching schema prop names directly.
@@ -171,6 +203,12 @@ export async function patchBlueprint(
   if (result.length === 0) {
     throw new Error(`Blueprint ${id} not found`);
   }
+
+  // patch 审计
+  recordBlueprintAuditSafe(id, id, 'blueprint_patched', {
+    agent: before?.agent ?? 'system',
+    status: `changed: ${Object.keys(changedSummary).join(',')}`,
+  });
 
   return { blueprint: toBlueprint(result[0]), warnings };
 }
@@ -194,4 +232,9 @@ export async function softDeleteBlueprint(id: string): Promise<void> {
   await db.update(blueprints)
     .set({ status: 'disabled', updatedAt: new Date().toISOString() })
     .where(eq(blueprints.id, id));
+
+  recordBlueprintAuditSafe(id, id, 'blueprint_soft_deleted', {
+    agent: 'system',
+    status: 'disabled',
+  });
 }

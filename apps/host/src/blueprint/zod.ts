@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import path from 'path';
 import fs from 'fs';
+import { isSafeCommand } from '../util/shell';
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -152,14 +153,33 @@ export const denySchema = z.object({
 });
 
 // ─── Notification ────────────────────────────────────────────
+/**
+ * Secret reference — 所有敏感字段统一走 "env:变量名" 引用。
+ * 例：{ "$secret": "env:SMTP_PASS" } 表示运行时从 process.env.SMTP_PASS 读。
+ * 禁止直接平铺 password / token / webhookUrl 明文进 DB。
+ */
+export const secretRefSchema = z.object({
+  $secret: z.string().min(1),
+});
+
 export const notificationChannelsSchema = z.object({
   desktop: z.boolean().optional(),
   browser: z.boolean().optional(),
-  email: z.object({ to: z.string(), smtp: z.object({ host: z.string(), port: z.number(), user: z.string(), pass: z.string() }) }).optional(),
-  lark: z.object({ webhookUrl: z.string() }).optional(),
-  slack: z.object({ webhookUrl: z.string() }).optional(),
-  discord: z.object({ webhookUrl: z.string() }).optional(),
-  telegram: z.object({ botToken: z.string(), chatId: z.string() }).optional(),
+  // email: pass 不再入 DB，运行时由 SMTP_PASS 环境变量读入
+  email: z.object({
+    to: z.string(),
+    smtp: z.object({
+      host: z.string(),
+      port: z.number(),
+      user: z.string().optional(),
+      // 禁止明文 pass；改为 secretRef 或留空
+      pass: secretRefSchema.optional(),
+    }),
+  }).optional(),
+  lark: z.object({ webhookUrl: secretRefSchema }).optional(),
+  slack: z.object({ webhookUrl: secretRefSchema }).optional(),
+  discord: z.object({ webhookUrl: secretRefSchema }).optional(),
+  telegram: z.object({ botToken: secretRefSchema, chatId: z.string() }).optional(),
   skill: z.object({ name: z.string(), prompt: z.string() }).optional(),
   cli: z.object({ command: z.string() }).optional(),
 });
@@ -217,20 +237,10 @@ export const blueprintCreateSchema = z.object({
 export const blueprintPatchSchema = blueprintCreateSchema.partial();
 
 // ─── Dry-run criteria ────────────────────────────────────────
-/** Safe command pattern: only alphanumeric, dots, dashes, underscores, slashes, spaces */
-const SAFE_CMD_RE = /^[a-zA-Z0-9/_.\-]+\s*[a-zA-Z0-9/_.\-:]*$/;
-
 export const dryRunCriteriaSchema = z.object({
   command: z.string().min(1).refine(
-    (v) => {
-      // Extract the base command (first token)
-      const base = v.trim().split(/\s+/)[0]?.split('/').pop() ?? '';
-      const SAFE_BUILTINS = ['sh', 'bash', 'python', 'python3', 'node', 'npx', 'pnpm', 'npm', 'yarn', 'cargo', 'go', 'make', 'cmake'];
-      if (!SAFE_BUILTINS.includes(base)) return false;
-      if (/[;|&`$(){}!<>\\\n\r]/.test(v)) return false;
-      return true;
-    },
-    { message: 'Command must use a safe builtin (sh/bash/python/node/pnpm/npm etc) and no shell operators' },
+    (v) => isSafeCommand(v),
+    { message: 'Command must use a safe builtin (sh/bash/python/node/pnpm/npm etc), no shell operators, and sh only accepts -s' },
   ),
   cwd: pathSchema,
   timeoutMs: z.number().int().min(1000).max(300_000).default(5000),

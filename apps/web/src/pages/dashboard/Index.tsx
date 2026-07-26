@@ -1,11 +1,11 @@
 /* apps/web/src/pages/dashboard/Index.tsx */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as bpApi from '../../api/blueprints';
 import * as runApi from '../../api/runs';
 import type { Run, RunStatus } from '../../api/runs';
 import NavBar, { Tab } from '../../components/NavBar';
 
-const PHASES = ['分析', '计划+开发', '测试', '通知'];
+const PHASES_PLACEHOLDER: string[] = ['sense', 'decide', 'act', 'feedback'];
 
 function ago(iso?: string | Date | null): string {
   if (!iso) return '';
@@ -61,20 +61,21 @@ export default function Dashboard({ onOpenRun, onNav }: Props) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'All' | 'Success' | 'Failed' | 'Stopped'>('All');
 
+  const cancelledRef = useRef(false);
+  const load = () => Promise.all([
+    bpApi.listBlueprints().then((r) => r.items).catch(() => []),
+    runApi.listRuns(1, 50).then((r) => r.items).catch(() => []),
+  ]).then(([bps, rs]) => {
+    if (cancelledRef.current) return;
+    setBlueprints(bps);
+    setRuns(rs);
+    setLoading(false);
+  });
   useEffect(() => {
-    let cancelled = false;
-    const load = () => Promise.all([
-      bpApi.listBlueprints().then((r) => r.items).catch(() => []),
-      runApi.listRuns(1, 50).then((r) => r.items).catch(() => []),
-    ]).then(([bps, rs]) => {
-      if (cancelled) return;
-      setBlueprints(bps);
-      setRuns(rs);
-      setLoading(false);
-    });
+    cancelledRef.current = false;
     load();
     const iv = setInterval(load, 3000);
-    return () => { cancelled = true; clearInterval(iv); };
+    return () => { cancelledRef.current = true; clearInterval(iv); };
   }, []);
 
   const handleStop = async (runId: string, e: React.MouseEvent) => {
@@ -172,14 +173,24 @@ export default function Dashboard({ onOpenRun, onNav }: Props) {
                   </div>
                   <div className="font-medium mb-2">{run.goal?.objective || '—'}</div>
                   <div className="flex items-center gap-1 mb-3 flex-wrap">
-                    {PHASES.map((p, i) => (
-                      <span key={p} className="flex items-center gap-1">
-                        <span className={`phase-mini ${i === 0 ? 'done' : i === 1 ? 'active' : 'pending'}`}>
-                          {i + 1} {i === 0 ? '✓ ' : i === 1 ? '● ' : ''}{p}
+                    {(run.phaseHistory && run.phaseHistory.length > 0
+                      ? run.phaseHistory.map((ph) => ph.phaseId)
+                      : PHASES_PLACEHOLDER
+                    ).map((p, i) => {
+                      const historyStatus = run.phaseHistory?.[i]?.status;
+                      const cls = historyStatus === 'passed' ? 'done'
+                        : historyStatus === 'running' ? 'active'
+                        : historyStatus === 'failed' ? 'failed'
+                        : (historyStatus ? 'pending' : (i === 1 ? 'active' : i === 0 ? 'done' : 'pending'));
+                      return (
+                        <span key={`${run.id}-p${i}`} className="flex items-center gap-1">
+                          <span className={`phase-mini ${cls}`}>
+                            {i + 1} {historyStatus === 'passed' ? '✓ ' : historyStatus === 'running' ? '● ' : ''}{p}
+                          </span>
+                          {i < (run.phaseHistory ?? PHASES_PLACEHOLDER).length - 1 && <span className="text-dim">→</span>}
                         </span>
-                        {i < PHASES.length - 1 && <span className="text-dim">→</span>}
-                      </span>
-                    ))}
+                      );
+                    })}
                   </div>
                   <div className="flex items-center gap-3 text-[11px] text-muted mono">
                     <span>elapsed <strong style={{ color: 'var(--fg)' }}>{fmtElapsed(run.startedAt)}</strong></span>
