@@ -36,6 +36,8 @@ apps/*/.env.local
 # Loop Cockpit runtime（一旦产品跑起来，这些目录是用户数据）
 .loop-cockpit/
 ~/.loop-cockpit/
+.loop-cockpit-logs/
+*.tsbuildinfo
 
 # Spike experimental output（spike 自己的临时输出别 commit）
 spike/**/tmp/
